@@ -19,9 +19,6 @@ namespace LogonShell
             else
                 switch(args[0])
                 {
-                    case "/shutdown":
-                        Application.Run(new ShutdownBackgroundForm());
-                        break;
                     case "-tray":
                         Application.Run(new UserTray());
                         break;

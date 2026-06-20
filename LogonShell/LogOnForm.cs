@@ -134,7 +134,7 @@ namespace LogonShell
             {
                 if (Marshal.GetLastWin32Error() == 1326)
                 {
-                    new MessageBoxForm(Config.LoginErrorTitle, Config.LoginErrorText, 1).ShowDialog();
+                    MessageBox.Show(Config.LoginErrorText, Config.LoginErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     if (Config.PasswordHint.ToLower() == "tryfirst")
                         GetUserPasswordHint();
 					textBoxPassword.Text = "";
@@ -143,7 +143,7 @@ namespace LogonShell
 				}
                 else
 				{
-					new MessageBoxForm(Config.ErrorTitle, Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error()).Message, 0).ShowDialog();
+					MessageBox.Show(Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error()).Message, Config.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
 					return;
 				}
             }
@@ -154,7 +154,7 @@ namespace LogonShell
             }
             catch (Exception ex)
             {
-                new MessageBoxForm(Config.ErrorTitle, ex.Message, 0).ShowDialog();
+                MessageBox.Show(ex.Message, Config.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
 				Application.Exit();
 			}
 			ShowLoading();
