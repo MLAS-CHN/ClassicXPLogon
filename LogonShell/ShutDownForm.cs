@@ -11,58 +11,31 @@ namespace LogonShell
 		[DllImport("uxtheme.dll", SetLastError = true)]
 		static extern int SetWindowTheme(IntPtr window, string app, string theme);
 
-		string[] actionDescriptions =
-		{
-			@"Ends your session and shuts down Windows so you can safely turn off power.",
-			@"Ends your session, shuts down Windows, and starts Windows again.",
-			@"Maintains your session, keeping the computer running on low power with data still in memory."
-		};
-
-		int[] actionIcons = new int[3];
+		string[] actionDescriptions;
 		int selectedIndex;
 
         public ShutDownForm(int shutdownType = 0)
 		{
 			InitializeComponent();
-			this.Text = Settings.Read(12, true);
-            if (!Boolean.Parse(Settings.Read(37)))
-            {
-                pictureBoxBanner.SizeMode = PictureBoxSizeMode.CenterImage;
-                pictureBoxBanner.Image = Cache.Images[14];
-            }
-            else
-                pictureBoxBanner.Image = Cache.Images[10];
-            int height;
-			if (Int32.TryParse(Settings.Read(25).ToLower(), out height))
-				pictureBoxLoading.Height = height;
-			else
-				pictureBoxLoading.Height = Cache.Images[3].Height;
-			pictureBoxLoading.Image = new GifImage(Cache.Images[3]).GetNextFrame();
-			pictureBoxComputer.Image = Cache.Images[4];
+			this.Text = Config.ShutdownTitle;
+			pictureBoxBanner.Visible = false;
+			pictureBoxLoading.Visible = false;
 			comboBox1.Items.Clear();
-			comboBox1.Items.Add(Settings.Read(15, true));
-			comboBox1.Items.Add(Settings.Read(16, true));
-			comboBox1.Items.Add(Settings.Read(17, true));
-			actionDescriptions[0] = Settings.Read(18, true);
-			actionDescriptions[1] = Settings.Read(19, true);
-			actionDescriptions[2] = Settings.Read(20, true);
-			labelWdyw.Text = Settings.Read(13, true);
-			buttonOK.Text = Settings.Read(1, true);
-			buttonCancel.Text = Settings.Read(2, true);
-			buttonHelp.Text = Settings.Read(26, true);
-			actionIcons[0] = 4;
-			actionIcons[1] = 7;
-			actionIcons[2] = 8;
+			comboBox1.Items.Add(Config.ShutdownName);
+			comboBox1.Items.Add(Config.RestartName);
+			comboBox1.Items.Add(Config.StandbyName);
+			actionDescriptions = new string[] { Config.ShutdownDesc, Config.RestartDesc, Config.StandbyDesc };
+			labelWdyw.Text = Config.ShutdownQuestion;
+			buttonOK.Text = Config.BtnOK;
+			buttonCancel.Text = Config.BtnCancel;
+			buttonHelp.Text = Config.BtnHelp;
 			selectedIndex = shutdownType;
 		}
 
 		private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			if (comboBox1.SelectedIndex != -1)
-			{
 				labelDescription.Text = actionDescriptions[comboBox1.SelectedIndex];
-				pictureBoxComputer.Image = Cache.Images[actionIcons[comboBox1.SelectedIndex]];
-			}
 		}
 
 		private void buttonCancel_Click(object sender, EventArgs e)
@@ -73,7 +46,7 @@ namespace LogonShell
 		private void ShutDownForm_Load(object sender, EventArgs e)
 		{
 			comboBox1.SelectedIndex = selectedIndex;
-			if (Settings.Read(28).ToLower() == "classic")
+			if (Config.Theme.ToLower() == "classic")
 				SetWindowTheme(Handle, " ", " ");
 		}
 		private void buttonOK_Click(object sender, EventArgs e)
@@ -93,7 +66,6 @@ namespace LogonShell
 					LoadAnim = false;
 					break;
 				default:
-					MessageBox.Show("The selected option isn't available.");
 					LoadAnim = false;
 					break;
 			}
@@ -111,7 +83,6 @@ namespace LogonShell
 
         private void buttonHelp_Click(object sender, EventArgs e)
         {
-			(new Help()).ShowDialog();
         }
     }
 }

@@ -136,35 +136,20 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Cache.cs" />
+    <Compile Include="Config.cs" />
     <Compile Include="ShutdownBackgroundForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="ShutdownBackgroundForm.Designer.cs">
       <DependentUpon>ShutdownBackgroundForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Help.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Help.Designer.cs">
-      <DependentUpon>Help.cs</DependentUpon>
-    </Compile>
     <Compile Include="Logon.cs" />
-    <Compile Include="Settings.cs" />
-    <Compile Include="SecondaryBackgrounds.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="SecondaryBackgrounds.Designer.cs">
-      <DependentUpon>SecondaryBackgrounds.cs</DependentUpon>
-    </Compile>
     <Compile Include="BackgroundForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="BackgroundForm.Designer.cs">
       <DependentUpon>BackgroundForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="GifImage.cs" />
-    <Compile Include="IniFile.cs" />
     <Compile Include="LogOnForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -190,12 +175,6 @@
     <Compile Include="UserTray.cs" />
     <EmbeddedResource Include="ShutdownBackgroundForm.resx">
       <DependentUpon>ShutdownBackgroundForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Help.resx">
-      <DependentUpon>Help.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="SecondaryBackgrounds.resx">
-      <DependentUpon>SecondaryBackgrounds.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="BackgroundForm.resx">
       <DependentUpon>BackgroundForm.cs</DependentUpon>

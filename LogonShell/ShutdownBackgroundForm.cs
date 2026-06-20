@@ -23,7 +23,7 @@ namespace LogonShell
 			Height = r.Height;
 			Size = r.Size;
 			int st;
-			if (Cache.args.Length > 1 && Int32.TryParse(Cache.args[1], out st))
+			if (Config.Args.Length > 1 && Int32.TryParse(Config.Args[1], out st))
 				f1 = new ShutDownForm(st);
 			else
 				f1 = new ShutDownForm();

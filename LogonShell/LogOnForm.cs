@@ -104,7 +104,6 @@ namespace LogonShell
 		#endregion
 
 		bool optionsShown = false;
-		private GifImage gifImage = null;
         Control UsernameBox;
         SystemMenuManager menuManager;
 		List<string> UsernameList = new List<string>();
@@ -114,23 +113,23 @@ namespace LogonShell
 			InitializeComponent();
 			Load += Form1_Load;
 			LoadUI();
-			if (Cache.args.Length > 0 && Cache.args[0] == "-startup" && File.Exists(Environment.CurrentDirectory + "\\updates"))
+			if (Config.Args.Length > 0 && Config.Args[0] == "-startup" && File.Exists(Environment.CurrentDirectory + "\\updates"))
 			{
 				File.Delete(Environment.CurrentDirectory + "\\updates");
 				Thread.Sleep(250);
 				Environment.Exit(-1);
 			}
-			else if (Cache.args.Length > 0 && Cache.args[0] == "-startup" && AutologinEnabled())
+			else if (Config.Args.Length > 0 && Config.Args[0] == "-startup" && AutologinEnabled())
 			{
 				ShowLoading();
 				backgroundWorkerCloseOnLogon.RunWorkerAsync();
 			}
-			else if (Cache.args.Length > 0 && Cache.args[0] == "-shutdown")
+			else if (Config.Args.Length > 0 && Config.Args[0] == "-shutdown")
 				ShowLoading(true);
 			else
 			{
 				ShowKeySeqDialog();
-				if (Settings.Read(24).ToLower() == "always" && (Settings.Read(16).ToLower() == "last" || Settings.Read(16).ToLower() == "listlast"))
+				if (Config.PasswordHint.ToLower() == "always" && (Config.LoginType.ToLower() == "last" || Config.LoginType.ToLower() == "listlast"))
 					GetUserPasswordHint();
 			}
 			Program.sw.Stop();
@@ -139,7 +138,7 @@ namespace LogonShell
 		#region Form Events
 		private void Form1_Load(object sender, EventArgs e)
 		{
-			if (Settings.Read(28).ToLower() == "classic")
+			if (Config.Theme.ToLower() == "classic")
 				SetWindowTheme(Handle, " ", " ");
 		}
 
@@ -154,25 +153,8 @@ namespace LogonShell
         }
 		private void Form1_KeyDown(object sender, KeyEventArgs e)
 		{
-			var keySeqOption = Settings.Read(14).ToLower();
-			switch (keySeqOption)
-			{
-				case "win":
-					if (e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin)
-						HideKeySeq();
-					break;
-				case "ctrlaltwin":
-					if (e.Control && e.Alt && (e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin))
-						HideKeySeq();
-					break;
-				case "ctrlaltesc":
-					if (e.Control && e.Alt && e.KeyCode == Keys.Escape)
-						HideKeySeq();
-					break;
-				default:
-					MessageBox.Show("Configuration Error: unknown key sequence " + keySeqOption);
-					break;
-			}
+			if (e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin)
+				HideKeySeq();
 		}
 		#endregion
 
@@ -186,8 +168,8 @@ namespace LogonShell
             {
                 if (Marshal.GetLastWin32Error() == 1326)
                 {
-                    new MessageBoxForm(Settings.Read(21, true), Settings.Read(22, true), 1).ShowDialog();
-                    if (Settings.Read(24).ToLower() == "tryfirst")
+                    new MessageBoxForm(Config.LoginErrorTitle, Config.LoginErrorText, 1).ShowDialog();
+                    if (Config.PasswordHint.ToLower() == "tryfirst")
                         GetUserPasswordHint();
 					textBoxPassword.Text = "";
 					textBoxPassword.Focus();
@@ -195,7 +177,7 @@ namespace LogonShell
 				}
                 else
 				{
-					new MessageBoxForm(Settings.Read(23, true), Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error()).Message, 0).ShowDialog();
+					new MessageBoxForm(Config.ErrorTitle, Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error()).Message, 0).ShowDialog();
 					return;
 				}
             }
@@ -206,7 +188,7 @@ namespace LogonShell
             }
             catch (Exception ex)
             {
-                new MessageBoxForm(Settings.Read(23, true), ex.Message, 0).ShowDialog();
+                new MessageBoxForm(Config.ErrorTitle, ex.Message, 0).ShowDialog();
 				Application.Exit();
 			}
 			ShowLoading();
@@ -225,18 +207,18 @@ namespace LogonShell
 			buttonShutdown.Visible = optionsShown;
 			if (optionsShown)
 			{
-				buttonOptions.Text = Settings.Read(8, true) + " < <";
+				buttonOptions.Text = Config.BtnOptions + " < <";
 				buttonCancel.Location = buttonOK.Location;
 				buttonOK.Location = buttonDummy.Location;
-				if (Boolean.Parse(Settings.Read(36)))
+				if (Config.NetLogonOptions)
 					LoadDialUpDomain();
 			}
 			else
 			{
-				buttonOptions.Text = Settings.Read(8, true) + " > >";
+				buttonOptions.Text = Config.BtnOptions + " > >";
 				buttonOK.Location = buttonCancel.Location;
 				buttonCancel.Location = buttonShutdown.Location;
-				if (Boolean.Parse(Settings.Read(36)))
+				if (Config.NetLogonOptions)
 					HideDialUpDomain();
 			}
 		}
@@ -256,7 +238,6 @@ namespace LogonShell
 		}
 		private void labelHelpLink_Click(object sender, EventArgs e)
 		{
-			(new Help()).ShowDialog();
 		}
 		#endregion
 
@@ -308,7 +289,6 @@ namespace LogonShell
 			}
 			catch (Exception)
 			{
-				// new MessageBoxForm(Settings.Read(23, true), e.Message, 0).ShowDialog(); do nothing
 			}
 		}
 		#endregion
@@ -364,10 +344,10 @@ namespace LogonShell
 				Thread.Sleep(100);
 				if (Control.IsKeyLocked(Keys.CapsLock))
 				{
-					this.Invoke((MethodInvoker)delegate { labelCapsLock.Visible = true; pictureBoxCapsLock.Visible = true; });
+					this.Invoke((MethodInvoker)delegate { labelCapsLock.Visible = true; });
 					isCapsLockOn = true;
 				} else if (isCapsLockOn) {
-					this.Invoke((MethodInvoker)delegate { labelCapsLock.Visible = false; pictureBoxCapsLock.Visible = false; });
+					this.Invoke((MethodInvoker)delegate { labelCapsLock.Visible = false; });
 					isCapsLockOn = false;
 				}
             }
@@ -379,38 +359,20 @@ namespace LogonShell
 
 		private void ShowKeySeqDialog()
 		{
-			var keySeqOption = Settings.Read(14).ToLower();
-			if (keySeqOption != "false" && (keySeqOption == "win" || keySeqOption == "ctrlaltwin" || keySeqOption == "ctrlaltesc"))
+			if (!Config.UseKeySequence)
 			{
-				HideLogin();
-				labelKeySequence.Visible = true;
-				pictureBoxKeySequence.Image = Cache.Images[2];
-				pictureBoxKeySequence.Visible = true;
-				if (Boolean.Parse(Settings.Read(35)))
-				{
-					this.ClientSize = new Size(409, 185);
-					labelHelp.Visible = true;
-                    labelHelpLink.Visible = true;
-				}
-				this.KeyDown += new KeyEventHandler(this.Form1_KeyDown);
-			}
-			else if (keySeqOption.ToLower() == "false")
-			{
-				if (!Boolean.Parse(Settings.Read(33)))
+				if (!Config.ShowOptions)
 				{
 					buttonShutdown.Location = buttonOptions.Location;
 					buttonShutdown.Visible = true;
 					buttonOptions.Visible = false;
 				}
 				LoadUsernameBox();
-				if (!Boolean.Parse(Settings.Read(36)))
+				if (!Config.NetLogonOptions)
 					LoadDialUpDomain();
-				pictureBoxCapsLock.Image = Cache.Images[11];
 				backgroundWorkerCapsLockDetect.RunWorkerAsync();
 				Normalize();
 			}
-			else
-				MessageBox.Show("Configuration Error: unknown key sequence " + keySeqOption);
 		}
 
 		private void HideKeySeq()
@@ -446,7 +408,7 @@ namespace LogonShell
 			labelUsername.Visible = true;
 			buttonCancel.Visible = true;
 			buttonOK.Visible = true;
-			if (Boolean.Parse(Settings.Read(33)))
+			if (Config.ShowOptions)
 				buttonOptions.Visible = true;
 			else
 			{
@@ -459,9 +421,8 @@ namespace LogonShell
 			MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftUp);
 			LoadUsernameBox();
 			UsernameBox.Visible = true;
-			if (!Boolean.Parse(Settings.Read(36)))
+			if (!Config.NetLogonOptions)
 				LoadDialUpDomain();
-			pictureBoxCapsLock.Image = Cache.Images[11];
             backgroundWorkerCapsLockDetect.RunWorkerAsync();
 			Normalize();
 		}
@@ -469,99 +430,55 @@ namespace LogonShell
 		private void ShowLoading(bool isShutdown = false)
 		{
 			HideLogin();
-			this.Text = Settings.Read(10, true);
-			int fps;
-			if (Int32.TryParse(Settings.Read(20), out fps))
-			{
-				timer1.Interval = 1000 / fps;
-				timer1.Start();
-			}
-			else
-				pictureBoxLoading.Image = Cache.Images[3];
+			this.Text = Config.LoadingTitle;
+			pictureBoxBanner.Visible = false;
+			pictureBoxLoading.Visible = false;
 			if (isShutdown)
 			{
 				if (File.Exists(Environment.CurrentDirectory + "\\updates"))
 				{
-					if (Boolean.Parse(Settings.Read(38)))
+					if (Config.CloseOnUpdate)
 						Application.Exit();
                     else
 						backgroundWorkerInteractiveUpdate.RunWorkerAsync();
 				}
-				if (!Boolean.Parse(Settings.Read(37)))
-				{
-					pictureBoxBanner.SizeMode = PictureBoxSizeMode.CenterImage;
-					pictureBoxBanner.Image = Cache.Images[16];
-				}
-				else
-					pictureBoxBanner.Image = Cache.Images[15];
 				labelShutdown.Visible = true;
 			}
 			else
 			{
-				if (!Boolean.Parse(Settings.Read(37)))
-				{
-					pictureBoxBanner.SizeMode = PictureBoxSizeMode.CenterImage;
-					pictureBoxBanner.Image = Cache.Images[13];
-				}
-				else
-					pictureBoxBanner.Image = Cache.Images[9];
 				labelLoading.Visible = true;
 			}
 		}
 
 		private void LoadUI()
 		{
-			gifImage = new GifImage(Cache.Images[3]);
-			int height;
-			if (Int32.TryParse(Settings.Read(25), out height))
-				pictureBoxLoading.Height = height;
-			else
-				pictureBoxLoading.Height = Cache.Images[3].Height;
-			pictureBoxLoading.Image = gifImage.GetNextFrame();
-			if (!Boolean.Parse(Settings.Read(37)))
-            {
-                pictureBoxBanner.SizeMode = PictureBoxSizeMode.CenterImage;
-                pictureBoxBanner.Image = Cache.Images[12];
-            } else
-				pictureBoxBanner.Image = Cache.Images[0];
-			if (Boolean.Parse(Settings.Read(17)))
+			pictureBoxLoading.Visible = false;
+			pictureBoxBanner.Visible = false;
+			pictureBoxKeySequence.Visible = false;
+			pictureBoxCapsLock.Visible = false;
+			if (Config.IsCancelEnabled)
 				buttonCancel.Enabled = true;
-			if (Settings.Read(18).ToLower() == "enabled")
+			if (Config.ButtonXStyle.ToLower() == "enabled")
 				ControlBox = true;
-			else if (Settings.Read(18).ToLower() == "disabled")
+			else if (Config.ButtonXStyle.ToLower() == "disabled")
 			{
 				ControlBox = true;
                 this.menuManager = new SystemMenuManager(this, SystemMenuManager.MenuItemState.Greyed);
             }
-			var labels = this.Controls.OfType<Label>();
-			var buttons = this.Controls.OfType<Button>();
-			if (Settings.Read(27).ToLower() != "default")
-			{
-				this.BackColor = ColorTranslator.FromHtml(Settings.Read(27));
-				foreach (var lbl in labels)
-					lbl.BackColor = ColorTranslator.FromHtml(Settings.Read(27));
-				foreach (var btn in buttons)
-					btn.BackColor = SystemColors.Control;
-			}
-			if (Settings.Read(26).ToLower() != "default")
-			{
-				foreach (var lbl in labels)
-					lbl.ForeColor = ColorTranslator.FromHtml(Settings.Read(26));
-			}
-			this.Text = Settings.Read(5, true);
-			buttonOK.Text = Settings.Read(1, true);
-			buttonCancel.Text = Settings.Read(2, true);
-			buttonOptions.Text = Settings.Read(8, true) + " > >";
-			buttonShutdown.Text = Settings.Read(9, true);
-			labelPassword.Text = Settings.Read(6, true);
-			labelUsername.Text = Settings.Read(7, true);
-			labelLoading.Text = Settings.Read(11, true);
-			labelShutdown.Text = Settings.Read(14, true);
-			labelDomain.Text = Settings.Read(24, true);
-			checkBoxDialUp.Text = Settings.Read(25, true);
-			labelHelpLink.Text = Settings.Read(26, true);
-			labelHelp.Text = Settings.Read(27, true);
-			labelCapsLock.Text = Settings.Read(28, true);
+			this.Text = Config.LoginTitle;
+			buttonOK.Text = Config.BtnOK;
+			buttonCancel.Text = Config.BtnCancel;
+			buttonOptions.Text = Config.BtnOptions + " > >";
+			buttonShutdown.Text = Config.BtnShutdown;
+			labelPassword.Text = Config.LblPassword;
+			labelUsername.Text = Config.LblUsername;
+			labelLoading.Text = Config.LoadingText;
+			labelShutdown.Text = Config.ShuttingDownText;
+			labelDomain.Text = Config.LblDomain;
+			checkBoxDialUp.Text = Config.ChkDialUp;
+			labelHelpLink.Text = Config.BtnHelp;
+			labelHelp.Text = Config.KeySeqHelp;
+			labelCapsLock.Text = Config.CapsLockNotice;
 		}
 
 		private void Normalize()
@@ -583,7 +500,7 @@ namespace LogonShell
 
 		private void LoadDialUpDomain()
 		{
-			if (Settings.Read(34).ToLower() == "domaindialup")
+			if (Config.NetLogon.ToLower() == "domaindialup")
 			{
 				this.ClientSize = new System.Drawing.Size(409, 270);
 				checkBoxDialUp.Location = new Point(checkBoxDialUp.Left, 185);
@@ -599,12 +516,12 @@ namespace LogonShell
 				comboBoxDomain.Visible = true;
 				checkBoxDialUp.Visible = true;
 			}
-			else if (Settings.Read(34).ToLower() == "dialup")
+			else if (Config.NetLogon.ToLower() == "dialup")
 			{
 				this.ClientSize = new System.Drawing.Size(409, 245);
 				checkBoxDialUp.Visible = true;
 			}
-			else if (Settings.Read(34).ToLower() == "domain")
+			else if (Config.NetLogon.ToLower() == "domain")
 			{
 				this.ClientSize = new Size(409, 255);
 				comboBoxDomain.Items.Clear();
@@ -629,7 +546,7 @@ namespace LogonShell
 
 		private void LoadUsernameBox()
 		{
-			var usernameOption = Settings.Read(16).ToLower();
+			var usernameOption = Config.LoginType.ToLower();
 			switch (usernameOption)
 			{
 				case "simple":
@@ -653,7 +570,7 @@ namespace LogonShell
 					PopulateUserList(comboBoxUsername);
 					this.ActiveControl = comboBoxUsername;
                     comboBoxUsername.Focus();
-					if (Settings.Read(24).ToLower() == "always")
+					if (Config.PasswordHint.ToLower() == "always")
                         comboBoxUsername.SelectedIndexChanged += ComboBoxUsername_SelectedIndexChanged;
 					UsernameBox = comboBoxUsername;
 					break;
@@ -662,14 +579,13 @@ namespace LogonShell
 					comboBoxUsername.Visible = true;
 					PopulateUserList(comboBoxUsername);
 					comboBoxUsername.Text = GetLastUserLoggedOn();
-					if (Settings.Read(24).ToLower() == "always")
+					if (Config.PasswordHint.ToLower() == "always")
 						comboBoxUsername.SelectedIndexChanged += ComboBoxUsername_SelectedIndexChanged;
 					UsernameBox = comboBoxUsername;
 					this.ActiveControl = textBoxPassword;
 					textBoxPassword.Focus();
 					break;
 				default:
-					MessageBox.Show("Configuration Error: unknown login type " + usernameOption);
 					break;
 			}
 		}
@@ -677,22 +593,15 @@ namespace LogonShell
         private bool AutologinEnabled()
         {
             IntPtr phToken = new IntPtr();
-
             bool loggedIn = LogonUser(GetLastUserLoggedOn(), Environment.MachineName, "", 3, 0, ref phToken);
-
-			// int error = Marshal.GetLastWin32Error();
-			// 1327 = empty password
-
 			bool autologon = false;
 			bool displayLastUsername = true;
-
             RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon");
             if (key.GetValue("AutoAdminLogon") != null)
                 autologon = (key.GetValue("AutoAdminLogon").ToString()).Contains("1");
             key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System");
             if (key.GetValue("DontDisplayLastUserName") != null)
                 displayLastUsername = (key.GetValue("DontDisplayLastUserName").ToString()).Contains("0");
-
             if ((loggedIn || autologon) && displayLastUsername)
                 return true;
             else
@@ -700,7 +609,6 @@ namespace LogonShell
 		}
 		private void timer1_Tick(object sender, EventArgs e)
 		{
-			pictureBoxLoading.Image = gifImage.GetNextFrame();
 		}
 
 		#endregion

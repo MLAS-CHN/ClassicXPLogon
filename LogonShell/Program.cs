@@ -7,27 +7,18 @@ namespace LogonShell
     static class Program
     {
         public static Stopwatch sw;
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
+
         [STAThread]
         static void Main(string[] args)
         {
             sw = new Stopwatch();
             sw.Start();
-            Cache.Initialize(args);
-            if (Settings.Read(28).ToLower() != "classic")
-                Application.EnableVisualStyles();
+            Config.Initialize(args);
             if (args.Length == 0)
                 Application.Run(new BackgroundForm());
             else
                 switch(args[0])
                 {
-                    case "/quiet":
-                        Cache.Refresh();
-                        sw.Stop();
-                        Application.Exit();
-                        break;
                     case "/shutdown":
                         Application.Run(new ShutdownBackgroundForm());
                         break;
