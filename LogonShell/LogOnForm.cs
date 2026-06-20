@@ -19,49 +19,19 @@ namespace LogonShell
 		#region P/Invoke
 		public enum WTS_CONNECTSTATE_CLASS
 		{
-			WTSActive,
-			WTSConnected,
-			WTSConnectQuery,
-			WTSShadow,
-			WTSDisconnected,
-			WTSIdle,
-			WTSListen,
-			WTSReset,
-			WTSDown,
-			WTSInit
+			WTSActive, WTSConnected, WTSConnectQuery, WTSShadow, WTSDisconnected,
+			WTSIdle, WTSListen, WTSReset, WTSDown, WTSInit
 		}
 
 		public enum WTS_INFO_CLASS
 		{
-			WTSInitialProgram,
-			WTSApplicationName,
-			WTSWorkingDirectory,
-			WTSOEMId,
-			WTSSessionId,
-			WTSUserName,
-			WTSWinStationName,
-			WTSDomainName,
-			WTSConnectState,
-			WTSClientBuildNumber,
-			WTSClientName,
-			WTSClientDirectory,
-			WTSClientProductId,
-			WTSClientHardwareId,
-			WTSClientAddress,
-			WTSClientDisplay,
-			WTSClientProtocolType,
-			WTSIdleTime,
-			WTSLogonTime,
-			WTSIncomingBytes,
-			WTSOutgoingBytes,
-			WTSIncomingFrames,
-			WTSOutgoingFrames,
-			WTSClientInfo,
-			WTSSessionInfo,
-			WTSSessionInfoEx,
-			WTSConfigInfo,
-			WTSValidationInfo,
-			WTSSessionAddressV4,
+			WTSInitialProgram, WTSApplicationName, WTSWorkingDirectory, WTSOEMId,
+			WTSSessionId, WTSUserName, WTSWinStationName, WTSDomainName, WTSConnectState,
+			WTSClientBuildNumber, WTSClientName, WTSClientDirectory, WTSClientProductId,
+			WTSClientHardwareId, WTSClientAddress, WTSClientDisplay, WTSClientProtocolType,
+			WTSIdleTime, WTSLogonTime, WTSIncomingBytes, WTSOutgoingBytes,
+			WTSIncomingFrames, WTSOutgoingFrames, WTSClientInfo, WTSSessionInfo,
+			WTSSessionInfoEx, WTSConfigInfo, WTSValidationInfo, WTSSessionAddressV4,
 			WTSIsRemoteSession
 		}
 
@@ -69,10 +39,8 @@ namespace LogonShell
 		private struct WTS_SESSION_INFO
 		{
 			public Int32 SessionID;
-
 			[MarshalAs(UnmanagedType.LPStr)]
 			public String pWinStationName;
-
 			public WTS_CONNECTSTATE_CLASS State;
 		}
 
@@ -91,11 +59,10 @@ namespace LogonShell
 		[DllImport("uxtheme.dll", SetLastError = true)]
 		static extern int SetWindowTheme(IntPtr window, string app, string theme);
 		[DllImport("user32.dll", SetLastError = true)]
-		static extern bool ExitWindowsEx(uint uFlags, uint dwReason); [DllImport("advapi32.dll", SetLastError = true, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+		static extern bool ExitWindowsEx(uint uFlags, uint dwReason);
+		[DllImport("advapi32.dll", SetLastError = true, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		static extern bool LogonUser([MarshalAs(UnmanagedType.LPStr)] string pszUserName, [MarshalAs(UnmanagedType.LPStr)] string pszDomain, [MarshalAs(UnmanagedType.LPStr)] string pszPassword, int dwLogonType, int dwLogonProvider, ref IntPtr phToken);
-		[DllImport("user32.dll", SetLastError = true)]
-		static extern bool PaintDesktop(IntPtr hdc);
 
 		readonly IntPtr WTS_CURRENT_SERVER_HANDLE = IntPtr.Zero;
 
@@ -103,11 +70,11 @@ namespace LogonShell
         static extern int SetForegroundWindow(IntPtr point);
 		#endregion
 
-		bool optionsShown = false;
         Control UsernameBox;
         SystemMenuManager menuManager;
 		List<string> UsernameList = new List<string>();
 		List<string> UserSIDList = new List<string>();
+
         public LogOnForm()
 		{
 			InitializeComponent();
@@ -125,10 +92,14 @@ namespace LogonShell
 				backgroundWorkerCloseOnLogon.RunWorkerAsync();
 			}
 			else if (Config.Args.Length > 0 && Config.Args[0] == "-shutdown")
+			{
 				ShowLoading(true);
+			}
 			else
 			{
-				ShowKeySeqDialog();
+				LoadUsernameBox();
+				backgroundWorkerCapsLockDetect.RunWorkerAsync();
+				Normalize();
 				if (Config.PasswordHint.ToLower() == "always" && (Config.LoginType.ToLower() == "last" || Config.LoginType.ToLower() == "listlast"))
 					GetUserPasswordHint();
 			}
@@ -151,11 +122,6 @@ namespace LogonShell
         {
             Application.Exit();
         }
-		private void Form1_KeyDown(object sender, KeyEventArgs e)
-		{
-			if (e.KeyCode == Keys.LWin || e.KeyCode == Keys.RWin)
-				HideKeySeq();
-		}
 		#endregion
 
 		#region Control Events
@@ -163,7 +129,7 @@ namespace LogonShell
 		private void buttonOK_Click(object sender, EventArgs e)
 		{
             IntPtr user = new IntPtr();
-            bool succes = LogonUser(UsernameBox.Text, comboBoxDomain.Text, textBoxPassword.Text, 3, 0, ref user);
+            bool succes = LogonUser(UsernameBox.Text, Environment.MachineName, textBoxPassword.Text, 3, 0, ref user);
             if (!succes)
             {
                 if (Marshal.GetLastWin32Error() == 1326)
@@ -201,43 +167,16 @@ namespace LogonShell
 			Application.Exit();
 		}
 
-		private void buttonOptions_Click(object sender, EventArgs e)
-		{
-			optionsShown = !optionsShown;
-			buttonShutdown.Visible = optionsShown;
-			if (optionsShown)
-			{
-				buttonOptions.Text = Config.BtnOptions + " < <";
-				buttonCancel.Location = buttonOK.Location;
-				buttonOK.Location = buttonDummy.Location;
-				if (Config.NetLogonOptions)
-					LoadDialUpDomain();
-			}
-			else
-			{
-				buttonOptions.Text = Config.BtnOptions + " > >";
-				buttonOK.Location = buttonCancel.Location;
-				buttonCancel.Location = buttonShutdown.Location;
-				if (Config.NetLogonOptions)
-					HideDialUpDomain();
-			}
-		}
-
 		private void buttonShutdown_Click(object sender, EventArgs e)
 		{
-			var ShutdownForm = new ShutDownForm();
-			var result = ShutdownForm.ShowDialog();
-			if (result == DialogResult.OK)
-				ShowLoading(true);
-			ShutdownForm.Dispose();
+			string shortcut = Environment.CurrentDirectory + "\\shutdown.lnk";
+			if (File.Exists(shortcut))
+				Process.Start(shortcut);
         }
 
         private void ComboBoxUsername_SelectedIndexChanged(object sender, EventArgs e)
         {
             GetUserPasswordHint();
-		}
-		private void labelHelpLink_Click(object sender, EventArgs e)
-		{
 		}
 		#endregion
 
@@ -254,6 +193,7 @@ namespace LogonShell
             }
 			userComboBox.Items.AddRange(UsernameList.ToArray());
 		}
+
 		private string GetLastUserLoggedOn()
 		{
 			string location = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
@@ -263,11 +203,12 @@ namespace LogonShell
 				using (var key = hive.OpenSubKey(location))
 				{
 					var item = key.GetValue("LastLoggedOnUser");
-					string itemValue = item == null ? "No Logon Found" : item.ToString().Remove(0, 2); ;
+					string itemValue = item == null ? "No Logon Found" : item.ToString().Remove(0, 2);
 					return itemValue;
 				}
 			}
 		}
+
 		private void GetUserPasswordHint()
 		{
 			try
@@ -297,7 +238,7 @@ namespace LogonShell
 
 		private void backgroundWorkerCloseOnLogon_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
 		{
-			Process p = Process.GetProcessesByName("LogonUI").FirstOrDefault();
+			Process p;
 			do
 			{
 				p = Process.GetProcessesByName("LogonUI").FirstOrDefault();
@@ -305,6 +246,7 @@ namespace LogonShell
 			} while (p != null);
 			Application.Exit();
 		}
+
 		private void backgroundWorkerInteractiveUpdate_DoWork(object sender, System.ComponentModel.DoWorkEventArgs e)
 		{
 			Thread.Sleep(200);
@@ -357,40 +299,11 @@ namespace LogonShell
 
 		#region Miscellaneous
 
-		private void ShowKeySeqDialog()
-		{
-			if (!Config.UseKeySequence)
-			{
-				if (!Config.ShowOptions)
-				{
-					buttonShutdown.Location = buttonOptions.Location;
-					buttonShutdown.Visible = true;
-					buttonOptions.Visible = false;
-				}
-				LoadUsernameBox();
-				if (!Config.NetLogonOptions)
-					LoadDialUpDomain();
-				backgroundWorkerCapsLockDetect.RunWorkerAsync();
-				Normalize();
-			}
-		}
-
-		private void HideKeySeq()
-		{
-			labelKeySequence.Visible = false;
-			pictureBoxKeySequence.Visible = false;
-			labelHelp.Visible = false;
-			labelHelpLink.Visible = false;
-			ShowLogin();
-			this.KeyDown -= this.Form1_KeyDown;
-		}
-
 		private void HideLogin()
 		{
 			textBoxPassword.Visible = false;
 			comboBoxUsername.Visible = false;
 			textBoxUsername.Visible = false;
-			comboBoxDomain.Visible = false;
 			var labels = this.Controls.OfType<Label>();
 			foreach (var lbl in labels)
 				lbl.Visible = false;
@@ -400,39 +313,10 @@ namespace LogonShell
 			this.ClientSize = new Size(409, 152);
 		}
 
-		private void ShowLogin()
-		{
-			this.ClientSize = new Size(409, 225);
-			textBoxPassword.Visible = true;
-			labelPassword.Visible = true;
-			labelUsername.Visible = true;
-			buttonCancel.Visible = true;
-			buttonOK.Visible = true;
-			if (Config.ShowOptions)
-				buttonOptions.Visible = true;
-			else
-			{
-				buttonShutdown.Location = buttonOptions.Location;
-				buttonShutdown.Visible = true;
-				buttonOptions.Visible = false;
-			}
-			MouseOperations.SetCursorPosition(Location.X + 350, Location.Y + 128);
-			MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftDown);
-			MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftUp);
-			LoadUsernameBox();
-			UsernameBox.Visible = true;
-			if (!Config.NetLogonOptions)
-				LoadDialUpDomain();
-            backgroundWorkerCapsLockDetect.RunWorkerAsync();
-			Normalize();
-		}
-
 		private void ShowLoading(bool isShutdown = false)
 		{
 			HideLogin();
 			this.Text = Config.LoadingTitle;
-			pictureBoxBanner.Visible = false;
-			pictureBoxLoading.Visible = false;
 			if (isShutdown)
 			{
 				if (File.Exists(Environment.CurrentDirectory + "\\updates"))
@@ -452,10 +336,6 @@ namespace LogonShell
 
 		private void LoadUI()
 		{
-			pictureBoxLoading.Visible = false;
-			pictureBoxBanner.Visible = false;
-			pictureBoxKeySequence.Visible = false;
-			pictureBoxCapsLock.Visible = false;
 			if (Config.IsCancelEnabled)
 				buttonCancel.Enabled = true;
 			if (Config.ButtonXStyle.ToLower() == "enabled")
@@ -468,81 +348,26 @@ namespace LogonShell
 			this.Text = Config.LoginTitle;
 			buttonOK.Text = Config.BtnOK;
 			buttonCancel.Text = Config.BtnCancel;
-			buttonOptions.Text = Config.BtnOptions + " > >";
 			buttonShutdown.Text = Config.BtnShutdown;
 			labelPassword.Text = Config.LblPassword;
 			labelUsername.Text = Config.LblUsername;
 			labelLoading.Text = Config.LoadingText;
 			labelShutdown.Text = Config.ShuttingDownText;
-			labelDomain.Text = Config.LblDomain;
-			checkBoxDialUp.Text = Config.ChkDialUp;
-			labelHelpLink.Text = Config.BtnHelp;
-			labelHelp.Text = Config.KeySeqHelp;
 			labelCapsLock.Text = Config.CapsLockNotice;
 		}
 
 		private void Normalize()
         {
-			if (labelUsername.Width > 70 || labelPassword.Width > 70 || labelDomain.Width > 70)
+			if (labelUsername.Width > 70 || labelPassword.Width > 70)
             {
-				int newWidth = (labelUsername.Width > labelPassword.Width)? labelUsername.Width : labelPassword.Width;
-				newWidth = (newWidth > labelDomain.Width) ? newWidth : labelDomain.Width;
+				int newWidth = (labelUsername.Width > labelPassword.Width) ? labelUsername.Width : labelPassword.Width;
 				newWidth = (newWidth > 142) ? 142 : newWidth;
 				UsernameBox.Left = newWidth + 16;
 				textBoxPassword.Left = newWidth + 16;
-				comboBoxDomain.Left = newWidth + 16;
-				checkBoxDialUp.Left = newWidth + 16;
 				labelHint.Left = newWidth + 16;
-				pictureBoxCapsLock.Left = newWidth + 15;
-				labelCapsLock.Left = newWidth + 31;
+				labelCapsLock.Left = newWidth + 16;
 			}
         }
-
-		private void LoadDialUpDomain()
-		{
-			if (Config.NetLogon.ToLower() == "domaindialup")
-			{
-				this.ClientSize = new System.Drawing.Size(409, 270);
-				checkBoxDialUp.Location = new Point(checkBoxDialUp.Left, 185);
-				comboBoxDomain.Items.Clear();
-                try
-                {
-                    comboBoxDomain.Items.Add(System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name);
-                }
-                catch { }
-                comboBoxDomain.Items.Add(Environment.MachineName);
-                comboBoxDomain.SelectedIndex = 0;
-				labelDomain.Visible = true;
-				comboBoxDomain.Visible = true;
-				checkBoxDialUp.Visible = true;
-			}
-			else if (Config.NetLogon.ToLower() == "dialup")
-			{
-				this.ClientSize = new System.Drawing.Size(409, 245);
-				checkBoxDialUp.Visible = true;
-			}
-			else if (Config.NetLogon.ToLower() == "domain")
-			{
-				this.ClientSize = new Size(409, 255);
-				comboBoxDomain.Items.Clear();
-				try
-				{
-                    comboBoxDomain.Items.Add(System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name);
-                } catch { }
-                comboBoxDomain.Items.Add(Environment.MachineName);
-                comboBoxDomain.SelectedIndex = 0;
-				labelDomain.Visible = true;
-				comboBoxDomain.Visible = true;
-			}
-		}
-
-		private void HideDialUpDomain()
-		{
-			labelDomain.Visible = false;
-			comboBoxDomain.Visible = false;
-			checkBoxDialUp.Visible = false;
-			this.ClientSize = new Size(409, 225);
-		}
 
 		private void LoadUsernameBox()
 		{
@@ -585,8 +410,6 @@ namespace LogonShell
 					this.ActiveControl = textBoxPassword;
 					textBoxPassword.Focus();
 					break;
-				default:
-					break;
 			}
 		}
 
@@ -602,13 +425,7 @@ namespace LogonShell
             key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System");
             if (key.GetValue("DontDisplayLastUserName") != null)
                 displayLastUsername = (key.GetValue("DontDisplayLastUserName").ToString()).Contains("0");
-            if ((loggedIn || autologon) && displayLastUsername)
-                return true;
-            else
-                return false;
-		}
-		private void timer1_Tick(object sender, EventArgs e)
-		{
+            return (loggedIn || autologon) && displayLastUsername;
 		}
 
 		#endregion
