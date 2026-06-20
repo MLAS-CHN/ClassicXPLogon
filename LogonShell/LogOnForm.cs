@@ -23,6 +23,13 @@ namespace LogonShell
         static extern bool LogonUser([MarshalAs(UnmanagedType.LPStr)] string pszUserName, [MarshalAs(UnmanagedType.LPStr)] string pszDomain, [MarshalAs(UnmanagedType.LPStr)] string pszPassword, int dwLogonType, int dwLogonProvider, ref IntPtr phToken);
         [DllImport("User32.dll")]
         static extern int SetForegroundWindow(IntPtr point);
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll")]
+        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        const int GWL_EXSTYLE = -20;
+        const int WS_EX_LAYERED = 0x80000;
+        const int WS_EX_TRANSPARENT = 0x20;
 
         class UserInfo
         {
@@ -34,7 +41,7 @@ namespace LogonShell
 
         List<UserInfo> _users = new List<UserInfo>();
         int _selectedIndex = -1, _hoverIndex = -1;
-        bool _isLoggingIn, _showError;
+        bool _isLoggingIn, _showError, _loggedIn;
         string _lastUser, _hintText;
         Bitmap _bgCache;
 
@@ -222,23 +229,26 @@ namespace LogonShell
                 g.DrawImage(_imgBg, 0, 80, w, BgH);
                 g.DrawImage(_imgDown, 0, h - 96, w, 96);
                 g.DrawImage(_imgLine, CenterX, 80, 1, BgH);
-                int lw = _imgLogo.Width, lh = _imgLogo.Height;
-                g.DrawImage(_imgLogo, CenterX - lw, 80 + (BgH - lh) / 2, lw, lh);
-                string hint = "\u8981\u5F00\u59CB\uFF0C\u8BF7\u5355\u51FB\u60A8\u7684\u7528\u6237\u540D    ";
-                var sf = new StringFormat(StringFormat.GenericTypographic);
-                sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
-                var sz = g.MeasureString(hint, _fontName, 0, sf);
-                g.DrawString(hint, _fontName, Brushes.White, CenterX - sz.Width, 80 + (BgH - lh) / 2 + lh - 18, sf);
-                int py = h - 96 + 22;
-                g.DrawImage(_imgPower, 25, py, 24, 24);
-                string powerText = "\u5173\u95ED\u8BA1\u7B97\u673A";
-                var pSz = g.MeasureString(powerText, _fontName);
-                g.DrawString(powerText, _fontName, Brushes.White, 25 + 24 + 3, py + (24 - pSz.Height) / 2);
-                var tipFont = new Font("\u5B8B\u4F53", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
-                string tipText = "\u767B\u5F55\u540E\uFF0C\u60A8\u53EF\u4EE5\u6DFB\u52A0\u6216\u66F4\u6539\u8D26\u6237\uFF0C\u8BF7\u8F6C\u5230\u201C\u63A7\u5236\u9762\u677F\u201D\uFF0C\n\u5E76\u5355\u51FB\u201C\u7528\u6237\u8D26\u6237\u201D\u3002";
-                var tipSz = g.MeasureString(tipText, tipFont);
-                g.DrawString(tipText, tipFont, Brushes.White, w - 30 - tipSz.Width, py);
-                tipFont.Dispose();
+                if (!_loggedIn)
+                {
+                    int lw = _imgLogo.Width, lh = _imgLogo.Height;
+                    g.DrawImage(_imgLogo, CenterX - lw, 80 + (BgH - lh) / 2, lw, lh);
+                    string hint = "\u8981\u5F00\u59CB\uFF0C\u8BF7\u5355\u51FB\u60A8\u7684\u7528\u6237\u540D    ";
+                    var sf = new StringFormat(StringFormat.GenericTypographic);
+                    sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                    var sz = g.MeasureString(hint, _fontName, 0, sf);
+                    g.DrawString(hint, _fontName, Brushes.White, CenterX - sz.Width, 80 + (BgH - lh) / 2 + lh - 18, sf);
+                    int py = h - 96 + 22;
+                    g.DrawImage(_imgPower, 25, py, 24, 24);
+                    string powerText = "\u5173\u95ED\u8BA1\u7B97\u673A";
+                    var pSz = g.MeasureString(powerText, _fontName);
+                    g.DrawString(powerText, _fontName, Brushes.White, 25 + 24 + 3, py + (24 - pSz.Height) / 2);
+                    var tipFont = new Font("\u5B8B\u4F53", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
+                    string tipText = "\u767B\u5F55\u540E\uFF0C\u60A8\u53EF\u4EE5\u6DFB\u52A0\u6216\u66F4\u6539\u8D26\u6237\uFF0C\u8BF7\u8F6C\u5230\u201C\u63A7\u5236\u9762\u677F\u201D\uFF0C\n\u5E76\u5355\u51FB\u201C\u7528\u6237\u8D26\u6237\u201D\u3002";
+                    var tipSz = g.MeasureString(tipText, tipFont);
+                    g.DrawString(tipText, tipFont, Brushes.White, w - 30 - tipSz.Width, py);
+                    tipFont.Dispose();
+                }
             }
         }
 
@@ -248,6 +258,29 @@ namespace LogonShell
             if (_bgCache != null) g.DrawImage(_bgCache, 0, 0);
 
             if (_users.Count == 0) return;
+
+            if (_loggedIn && _selectedIndex >= 0)
+            {
+                var welcomeFont = new Font("\u5B8B\u4F53", 36f, FontStyle.Bold | FontStyle.Italic);
+                string welcomeText = "\u6B22\u8FCE\u4F7F\u7528";
+                var wsz = g.MeasureString(welcomeText, welcomeFont);
+                float wx = CenterX - 20 - wsz.Width;
+                float wy = 80 + (BgH - wsz.Height) / 2f;
+                g.DrawString(welcomeText, welcomeFont, new SolidBrush(Color.FromArgb(100, 0, 0, 0)), wx + 3, wy + 3);
+                g.DrawString(welcomeText, welcomeFont, Brushes.White, wx, wy);
+                welcomeFont.Dispose();
+
+                var u = _users[_selectedIndex];
+                int rowY = 80 + (BgH - 80) / 2;
+                int sqX = CenterX + 36, sqY = rowY + 14;
+                DrawShadow(g, sqX, sqY, 52, 52, 3, 1f);
+                using (var path = RoundedRect(new Rectangle(sqX, sqY, 52, 52), 3))
+                    g.FillPath(Brushes.White, path);
+                DrawAvatar(g, u.Avatar, sqX + 2, sqY + 2, 48, 48, 1f);
+                g.DrawString(u.Name, _fontName, Brushes.White, sqX + 52 + 9, sqY);
+                return;
+            }
+
             int top = UserTop;
 
             if (_selectedIndex >= 0 && _selectedIndex < _users.Count)
@@ -395,6 +428,7 @@ namespace LogonShell
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
+            if (_loggedIn) return;
             if (PowerRect.Contains(e.Location))
             {
                 OpenPowerShortcut();
@@ -486,17 +520,49 @@ namespace LogonShell
             bool isLast = string.Compare(_lastUser, u.Name, CultureInfo.CurrentCulture,
                 CompareOptions.IgnoreCase | CompareOptions.IgnoreSymbols) == 0;
 
-            try
-            {
-                Logon.Login(u.Name, cleanPwd, isLast);
-            }
-            catch { Application.Exit(); return; }
-
+            _loggedIn = true;
             _passwordBox.Visible = false;
             _goBtn.Visible = false;
             _chPic.Visible = false;
             _insPic.Visible = false;
-            _closeWorker.RunWorkerAsync();
+            RenderBgCache();
+            Refresh();
+            SetWindowLong(this.Handle, GWL_EXSTYLE, GetWindowLong(this.Handle, GWL_EXSTYLE) | WS_EX_LAYERED | WS_EX_TRANSPARENT);
+            BackgroundForm.form.MakeTransparent();
+
+            var loginWorker = new BackgroundWorker();
+            var capturedHandle = this.Handle;
+            loginWorker.DoWork += (s2, e2) =>
+            {
+                try { Logon.Login(u.Name, cleanPwd, isLast); }
+                catch (Exception ex)
+                {
+                    File.AppendAllText(Environment.CurrentDirectory + "\\login.log",
+                        DateTime.Now + " Login failed: " + ex.Message + "\n");
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        SetWindowLong(capturedHandle, GWL_EXSTYLE,
+                            GetWindowLong(capturedHandle, GWL_EXSTYLE) & ~(WS_EX_LAYERED | WS_EX_TRANSPARENT));
+                        BackgroundForm.form.RemoveTransparent();
+                        _loggedIn = false;
+                        _selectedIndex = -1;
+                        _showError = false;
+                        _hintText = null;
+                        _passwordBox.Visible = false;
+                        _goBtn.Visible = false;
+                        _chPic.Visible = false;
+                        _insPic.Visible = false;
+                        RenderBgCache();
+                        Refresh();
+                    });
+                    return;
+                }
+                Process lp;
+                do { lp = Process.GetProcessesByName("LogonUI").FirstOrDefault(); System.Threading.Thread.Sleep(100); }
+                while (lp != null);
+                Application.Exit();
+            };
+            loginWorker.RunWorkerAsync();
         }
 
         void ShowPasswordHint()

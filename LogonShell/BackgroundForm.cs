@@ -80,21 +80,10 @@ namespace LogonShell
             while (!backgroundWorker1.CancellationPending)
             {
                 Thread.Sleep(50);
-                IntPtr hwnd = GetForegroundWindow();
-                if (hwnd == null)
-                    continue;
-                uint pid;
-                GetWindowThreadProcessId(hwnd, out pid);
                 foreach (Process p in Process.GetProcesses())
                 {
                     if (p.ProcessName == "LockApp" || p.ProcessName == "LockScreen" || p.ProcessName == "LockAppHost" || p.ProcessName == "LockScreenContentServer") 
                         p.Kill();
-                    else if (p.Id == pid && p.ProcessName != Process.GetCurrentProcess().ProcessName)
-                    {
-                        MouseOperations.SetCursorPosition(f1.Location.X + 350, f1.Location.Y + 128);
-                        MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftDown);
-                        MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftUp);
-                    }
                 }
             }
         }

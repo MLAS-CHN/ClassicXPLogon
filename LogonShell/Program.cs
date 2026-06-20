@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace LogonShell
@@ -12,28 +13,29 @@ namespace LogonShell
         [STAThread]
         static void Main(string[] args)
         {
-            try
+            if (args.Length > 0 && args[0] == "-tray")
             {
-                sw = new Stopwatch();
-                sw.Start();
                 Config.Initialize(args);
-                if (args.Length == 0)
-                    Application.Run(new BackgroundForm());
-                else
-                    switch (args[0])
-                    {
-                        case "-tray":
-                            Application.Run(new UserTray());
-                            break;
-                        default:
-                            Application.Run(new BackgroundForm());
-                            break;
-                    }
+                Application.Run(new UserTray());
+                return;
             }
-            catch (Exception ex)
+
+            bool created;
+            using (var mutex = new Mutex(true, "ClassicLogonShell_SingleInstance", out created))
             {
-                File.WriteAllText(Environment.CurrentDirectory + "\\crash.log",
-                    DateTime.Now + " " + ex.ToString());
+                if (!created) return;
+                try
+                {
+                    sw = new Stopwatch();
+                    sw.Start();
+                    Config.Initialize(args);
+                    Application.Run(new BackgroundForm());
+                }
+                catch (Exception ex)
+                {
+                    File.WriteAllText(Environment.CurrentDirectory + "\\crash.log",
+                        DateTime.Now + " " + ex.ToString());
+                }
             }
         }
     }
