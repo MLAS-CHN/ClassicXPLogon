@@ -1,0 +1,194 @@
+自定义登录界面元素描述
+========================
+
+## 窗体
+背景色: RGB(58, 110, 165) 蓝色
+边框: FormBorderStyle.Sizable（可拖动缩放）
+显示位置: 非全屏，TopMost=true
+大小: 800x600（当前调试模式）
+双击缓冲: DoubleBuffered = true
+
+## 顶部区域（up.png）
+图片: up.png
+拉伸: 横向缩放（X 拉伸到窗口宽度），Y 不拉伸，固定 80px 高
+位置: X=0, Y=0
+尺寸: W=窗口宽度, H=80
+图层: 背景缓存层（最底层，预渲染到_bgCache）
+
+## 中间背景（bg.png）
+图片: bg.png
+拉伸: 横向缩放（X 拉伸到窗口宽度），Y 拉伸到 bg 区高度
+位置: X=0, Y=80
+尺寸: W=窗口宽度, H=窗口高度-80-96
+图层: 背景缓存层
+
+## 底部区域（down.png）
+图片: down.png
+拉伸: 横向缩放（X 拉伸到窗口宽度），Y 不拉伸，固定 96px 高
+位置: X=0, Y=窗口高度-96
+尺寸: W=窗口宽度, H=96
+图层: 背景缓存层
+
+## 分隔线（line.png）
+图片: line.png
+拉伸: 纵向缩放（Y 拉伸到 bg 区高度），X 不拉伸，固定 1px 宽
+位置: X=窗口宽度/2（中线）, Y=80
+尺寸: W=1, H=窗口高度-80-96
+图层: 背景缓存层
+
+## Windows Logo（windows_logo.png）
+图片: windows_logo.png
+拉伸: 不拉伸，原始尺寸
+位置: X=中线-logo宽（logo 右边缘紧贴中线），Y=80+(bg区高-logo高)/2（bg 区垂直居中）
+图层: 背景缓存层
+
+## 提示文字
+内容: "要开始，请单击您的用户名    "（末尾 4 个空格）
+字体: 宋体 14pt Regular
+颜色: 白色 White
+位置: X=中线-文字宽度（右边缘紧贴中线），Y=logo底边-18
+图层: 背景缓存层
+
+## 选中用户高亮（selected.png）
+图片: selected.png
+拉伸: 不拉伸，原始尺寸
+位置: X=中线+1, Y=选中用户行的纵向居中（userTop + idx*80 + (80-selected高)/2）
+图层: 背景缓存之上、所有用户元素之下（OnPaint 在用户循环之前先画它）
+
+## 用户区域（分隔线右侧）
+整体位置: X=中线, Y=80+(bg区高-用户总高)/2（bg 区垂直居中）
+用户总高: _users.Count * 80
+每行高度: 80px
+鼠标检测: 整个 80x宽 矩形，从分隔线到窗口右边缘
+点击空白: _selectedIndex 设为 -1，取消选中
+
+## 用户头像底板
+形状: 圆角正方形，圆角半径 r=3
+尺寸: 52x52
+位置: X=中线+36, Y=用户行顶+14（行内垂直居中，上下各 14px 边距）
+颜色: RGB(204, 214, 235)
+图层: OnPaint 绘制
+
+## 用户头像底板阴影
+层数: 4 层
+颜色: 黑色 RGB(0,0,0)
+层1（最内）: 偏移(+1,+1)，不透明度 50 x opMul
+层2: 偏移(+2,+2)，不透明度 32 x opMul
+层3: 偏移(+3,+3)，不透明度 16 x opMul
+层4（最外）: 偏移(+4,+4)，不透明度 6 x opMul
+图层: 头像底板下层
+
+## 用户头像
+图片来源:
+  1. 注册表 HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\{SID}
+     依次读取 Image128 -> Image96 -> Image48 路径
+  2. 文件不存在或无头像: 使用 default_user.png
+拉伸: InterpolationMode.NearestNeighbor（最近邻插值），保持宽高比
+尺寸: 48x48（头像底板内缩 2px）
+位置: 头像底板内 (sqX+2, sqY+2)
+透明度: 通过 ColorMatrix 应用 opMul 不透明度
+图层: 头像底板之上
+
+## 用户名文字
+字体: 宋体 14pt Regular
+颜色: 白色 x 不透明度
+位置: X=头像底板右+9(sqX+52+9), Y=头像底板顶(sqY)（与底板顶边对齐）
+
+## 选中用户 - "输入密码"提示文字
+内容: "输入密码"
+字体: 宋体 9pt Regular
+颜色: 白色 x 不透明度
+位置: X=头像底板右+13(sqX+52+13), Y=头像底板顶+29(sqY+29)
+
+## 选中用户 - 密码输入框（_passwordBox）
+类型: WinForms TextBox
+字体: 宋体 14pt Regular
+尺寸: 161x27
+密码字符: UseSystemPasswordChar = true（显示圆点）
+位置: X=头像底板右+10(sqX+52+10), Y=头像底板顶+43(sqY+43)
+初始状态: Visible = false，选中用户时显示
+
+## 选中用户 - ch.png 按钮（_chBtn）
+图片: ch.png（16x16）
+图片布局: ImageLayout.None（不缩放）
+行为: 无交互（纯装饰）
+位置: X=密码框右+5(boxX+161+5), Y=密码框垂直居中(boxY+(27-16)/2)
+
+## 选中用户 - go.png 按钮（_goBtn）
+图片: go.png（24x24）
+图片布局: ImageLayout.None（不缩放）
+行为: 点击触发登录流程（见下方"go 按钮登录流程"）
+位置: X=ch按钮右+5(boxX+161+5+16+5), Y=密码框垂直居中(boxY+(27-24)/2)
+
+## 选中用户 - ins.png 按钮（_insBtn）
+图片: ins.png（24x24）
+图片布局: ImageLayout.None（不缩放）
+行为: 无交互（纯装饰）
+位置: X=go按钮右+8(boxX+161+5+16+5+24+8), Y=密码框垂直居中(boxY+(27-24)/2)
+
+## 关闭按钮（_closeButton）
+类型: WinForms Button
+尺寸: 32x32
+外观: FlatStyle=Flat, 完全透明无边框, Cursor=Hand
+位置: 窗口右上角 (ClientSize.Width-32, 0)
+行为: 点击 -> Application.Exit()
+
+## 交互行为
+
+### 鼠标悬停淡化
+默认: 所有用户 opMul=1（100%）
+悬停某用户: 悬停者 opMul=1，其余 opMul=0.6（60%），选中者始终 100%
+动画: 300ms 线性插值，60fps 定时器(MaximumTimer.Interval=16ms)，每用户独立计时
+离开所有用户: 全部恢复 100%
+
+### 点击用户行
+行为: _selectedIndex=idx，显示密码框+ch+go+ins 按钮，密码框 Focus
+
+### 点击空白区域
+行为: _selectedIndex=-1，隐藏密码框和按钮
+
+### go 按钮登录流程
+1. LogonUser 验证密码（advapi32.LogonUser, LOGON32_LOGON_NETWORK）
+   失败: 清空密码框，重新聚焦
+2. 过滤密码控制字符: new string(pwd.Where(c => !char.IsControl(c)).ToArray())
+3. _isLoggingIn=true, Cancel _foregroundWorker + _lockKillWorker
+4. SetForegroundWindow(LogonUI_handle) + SendKeys("{BACKSPACE}") 消锁屏
+5. 非上次登录用户: FlaUI 找头像(Hide->Click->Sleep(300)->Show)
+6. FlaUI 找 Edit 控件 -> Focus() -> SendKeys(密码) -> SendKeys("{ENTER}")
+7. 循环等 LogonUI 进程退出 -> Application.Exit()
+
+### 后台线程1（_lockKillWorker，启动时运行）
+频率: 每 50ms
+行为: 遍历所有进程，杀 LockApp/LockScreen/LockAppHost/LockScreenContentServer
+      如果不是登录中(_isLoggingIn=false)且前台不是自己: SetForegroundWindow(Handle) 抢前台
+
+### 后台线程2（_foregroundWorker，当前未启动）
+频率: 每 50ms
+行为: 如果前台不是自己: SetForegroundWindow(Handle) 抢前台
+
+### 调整窗口大小时
+行为: 重绘背景缓存(RenderBgCache) + Invalidate()
+
+### 窗体关闭时
+行为: Cancel 两个后台线程
+
+## 用户数据
+
+### 用户枚举
+来源: WMI Win32_UserAccount WHERE LocalAccount=True AND Disabled=False
+排除: Administrator, Guest, DefaultAccount, WDAGUtilityAccount, 以$结尾的账户
+排序: 用户名字母序不区分大小写
+
+### 头像获取
+注册表: HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\{SID}
+依次取 Image128, Image96, Image48
+备选: default_user.png（嵌入资源）
+
+### 上次登录用户获取
+注册表: HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\LastLoggedOnUser
+格式: "DOMAIN\username"，取最后一个\之后的用户名部分
+
+## 背景缓存（_bgCache）
+用途: 静态背景（up/down/bg/line/logo/提示文字）预渲染到一个 Bitmap
+原因: 每帧动画只需 DrawImage 缓存，不用逐层重绘所有背景元素
+重绘时机: OnLoad 和窗体 Resize
