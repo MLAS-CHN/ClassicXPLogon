@@ -34,12 +34,12 @@ namespace LogonShell
 
         List<UserInfo> _users = new List<UserInfo>();
         int _selectedIndex = -1, _hoverIndex = -1;
-        bool _isLoggingIn;
-        string _lastUser;
+        bool _isLoggingIn, _showError;
+        string _lastUser, _hintText;
         Bitmap _bgCache;
 
         Image _imgUp, _imgDown, _imgBg, _imgLine, _imgLogo, _imgSelected;
-        Image _imgCh, _imgGo, _imgIns, _imgDefaultUser;
+        Image _imgCh, _imgGo, _imgIns, _imgDefaultUser, _imgPower;
         Font _fontName = new Font("\u5B8B\u4F53", 14f);
         Font _fontSmall = new Font("\u5B8B\u4F53", 9f);
 
@@ -88,6 +88,7 @@ namespace LogonShell
             _imgGo = LoadImg(dir + "go.png");
             _imgIns = LoadImg(dir + "ins.png");
             _imgDefaultUser = LoadImg(dir + "default_user.png");
+            _imgPower = LoadImg(dir + "power.png");
         }
 
         Image LoadImg(string path)
@@ -114,23 +115,43 @@ namespace LogonShell
 
         Image LoadAvatar(string sid)
         {
+            var log = new System.Text.StringBuilder();
+            log.AppendLine("LoadAvatar: " + sid);
             try
             {
                 string regPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\" + sid;
-                using (var key = Registry.LocalMachine.OpenSubKey(regPath))
+                var view = Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32;
+                using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                using (var key = hive.OpenSubKey(regPath))
                 {
+                    log.AppendLine("  key: " + (key != null ? "found" : "null"));
                     if (key != null)
                     {
-                        foreach (string val in new[] { "Image128", "Image96", "Image48" })
+                        foreach (string val in new[] { "Image240", "Image192", "Image96", "Image64", "Image48" })
                         {
                             string path = key.GetValue(val) as string;
-                            if (path != null && File.Exists(path))
-                                return Image.FromStream(new MemoryStream(File.ReadAllBytes(path)));
+                            log.AppendLine("  " + val + " = " + (path ?? "null"));
+                            if (path != null)
+                            {
+                                log.AppendLine("  exists: " + File.Exists(path));
+                                if (File.Exists(path))
+                                {
+                                    try
+                                    {
+                                        var img = Image.FromStream(new MemoryStream(File.ReadAllBytes(path)));
+                                        log.AppendLine("  OK: " + img.Width + "x" + img.Height);
+                                        File.AppendAllText(Environment.CurrentDirectory + "\\avatar.log", log.ToString());
+                                        return img;
+                                    }
+                                    catch (Exception ex) { log.AppendLine("  load error: " + ex.Message); }
+                                }
+                            }
                         }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { log.AppendLine("  outer error: " + ex.Message); }
+            File.AppendAllText(Environment.CurrentDirectory + "\\avatar.log", log.ToString());
             return _imgDefaultUser;
         }
 
@@ -138,10 +159,12 @@ namespace LogonShell
         {
             _passwordBox = new TextBox
             {
-                Font = _fontName, Size = new Size(161, 27),
-                UseSystemPasswordChar = true, Visible = false
+                Font = new Font("\u5B8B\u4F53", 12f, FontStyle.Regular, GraphicsUnit.Pixel),
+                Size = new Size(161, 27),
+                PasswordChar = '\u25CF', Visible = false
             };
             _passwordBox.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; DoLogin(); } };
+            _passwordBox.TextChanged += (s, e) => { if (_passwordBox.Text.Length > 0 && _showError) { _showError = false; Invalidate(); } };
             Controls.Add(_passwordBox);
 
             _goBtn = new Button
@@ -155,18 +178,20 @@ namespace LogonShell
             Controls.Add(_goBtn);
 
             _chPic = new PictureBox { Size = new Size(16, 16), Image = _imgCh, SizeMode = PictureBoxSizeMode.Normal, Visible = false };
-            _insPic = new PictureBox { Size = new Size(24, 24), Image = _imgIns, SizeMode = PictureBoxSizeMode.Normal, Visible = false };
+            _insPic = new PictureBox { Size = new Size(24, 24), Image = _imgIns, SizeMode = PictureBoxSizeMode.Normal, Visible = false, Cursor = Cursors.Hand };
+            _insPic.Click += (s, e) => ShowPasswordHint();
             Controls.Add(_chPic);
             Controls.Add(_insPic);
 
             _closeButton = new Button
             {
                 Size = new Size(32, 32), FlatStyle = FlatStyle.Flat,
-                BackColor = Color.Transparent, Cursor = Cursors.Hand, Text = "X",
-                ForeColor = Color.White, Font = new Font("Arial", 10f, FontStyle.Bold)
+                BackColor = Color.Transparent, Cursor = Cursors.Default, Text = "",
+                TabStop = false
             };
             _closeButton.FlatAppearance.BorderSize = 0;
-            _closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(80, 255, 255, 255);
+            _closeButton.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            _closeButton.FlatAppearance.MouseDownBackColor = Color.Transparent;
             _closeButton.Click += (s, e) => Application.Exit();
             Controls.Add(_closeButton);
 
@@ -187,7 +212,7 @@ namespace LogonShell
         void RenderBgCache()
         {
             int w = ClientSize.Width, h = ClientSize.Height;
-            if (w < 1 || h < 1) return;
+            if (w < 1 || h < 1 || _imgUp == null) return;
             _bgCache?.Dispose();
             _bgCache = new Bitmap(w, h);
             using (var g = Graphics.FromImage(_bgCache))
@@ -200,8 +225,20 @@ namespace LogonShell
                 int lw = _imgLogo.Width, lh = _imgLogo.Height;
                 g.DrawImage(_imgLogo, CenterX - lw, 80 + (BgH - lh) / 2, lw, lh);
                 string hint = "\u8981\u5F00\u59CB\uFF0C\u8BF7\u5355\u51FB\u60A8\u7684\u7528\u6237\u540D    ";
-                var sz = g.MeasureString(hint, _fontName);
-                g.DrawString(hint, _fontName, Brushes.White, CenterX - sz.Width, 80 + (BgH - lh) / 2 + lh - 18);
+                var sf = new StringFormat(StringFormat.GenericTypographic);
+                sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                var sz = g.MeasureString(hint, _fontName, 0, sf);
+                g.DrawString(hint, _fontName, Brushes.White, CenterX - sz.Width, 80 + (BgH - lh) / 2 + lh - 18, sf);
+                int py = h - 96 + 22;
+                g.DrawImage(_imgPower, 25, py, 24, 24);
+                string powerText = "\u5173\u95ED\u8BA1\u7B97\u673A";
+                var pSz = g.MeasureString(powerText, _fontName);
+                g.DrawString(powerText, _fontName, Brushes.White, 25 + 24 + 3, py + (24 - pSz.Height) / 2);
+                var tipFont = new Font("\u5B8B\u4F53", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
+                string tipText = "\u767B\u5F55\u540E\uFF0C\u60A8\u53EF\u4EE5\u6DFB\u52A0\u6216\u66F4\u6539\u8D26\u6237\uFF0C\u8BF7\u8F6C\u5230\u201C\u63A7\u5236\u9762\u677F\u201D\uFF0C\n\u5E76\u5355\u51FB\u201C\u7528\u6237\u8D26\u6237\u201D\u3002";
+                var tipSz = g.MeasureString(tipText, tipFont);
+                g.DrawString(tipText, tipFont, Brushes.White, w - 30 - tipSz.Width, py);
+                tipFont.Dispose();
             }
         }
 
@@ -227,7 +264,8 @@ namespace LogonShell
                 int sqX = CenterX + 36, sqY = rowY + 14;
 
                 DrawShadow(g, sqX, sqY, 52, 52, 3, op);
-                using (var br = new SolidBrush(Color.FromArgb((int)(255 * op), 204, 214, 235)))
+                Color sqColor = (i == _selectedIndex) ? Color.FromArgb((int)(255 * op), 255, 200, 0) : Color.FromArgb((int)(255 * op), 204, 214, 235);
+                using (var br = new SolidBrush(sqColor))
                 using (var path = RoundedRect(new Rectangle(sqX, sqY, 52, 52), 3))
                     g.FillPath(br, path);
 
@@ -239,6 +277,48 @@ namespace LogonShell
                 {
                     using (var br = new SolidBrush(Color.FromArgb((int)(255 * op), 255, 255, 255)))
                         g.DrawString("\u8F93\u5165\u5BC6\u7801", _fontSmall, br, sqX + 52 + 13, sqY + 29);
+                    int boxX = sqX + 52 + 10, boxY = sqY + 43;
+                    float nameW = g.MeasureString(u.Name, _fontName).Width;
+                    int bubbleX = sqX + 52 + 9 + (int)nameW + 8;
+                    var bubbleFont = new Font("\u5B8B\u4F53", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
+                    var bubbleFontBold = new Font("\u5B8B\u4F53", 12f, FontStyle.Bold, GraphicsUnit.Pixel);
+                    if (_hintText != null)
+                    {
+                        string dispHint = "\u63D0\u793A: " + _hintText;
+                        var tsz = g.MeasureString(dispHint, bubbleFont);
+                        int bw = (int)tsz.Width + 12, bh = (int)tsz.Height + 8;
+                        int by = sqY + ((int)g.MeasureString(u.Name, _fontName).Height - bh) / 2;
+                        var br2 = new Rectangle(bubbleX, by, bw, bh);
+                        g.FillRectangle(Brushes.White, br2);
+                        g.DrawRectangle(Pens.Black, br2);
+                        g.DrawString(dispHint, bubbleFont, Brushes.Black, bubbleX + 6, by + 4);
+                    }
+                    if (_showError)
+                    {
+                        string l1 = "\u6CA1\u6709\u8BB0\u4F4F\u5BC6\u7801?";
+                        string l2 = "\u60A8\u53EF\u4EE5\u5355\u51FB\u201C?\u201D\u6309\u94AE\uFF0C\u67E5\u770B\u5BC6\u7801\u6697\u793A\u3002";
+                        string l3 = "\u8BF7\u91CD\u65B0\u952E\u5165\u5BC6\u7801\u3002";
+                        string l4 = "\u5927\u5C0F\u5199\u5FC5\u987B\u6B63\u786E\u3002";
+                        float lh = g.MeasureString(l1, bubbleFontBold).Height;
+                        float maxW = 0;
+                        foreach (string s in new[] { l1, l2, l3, l4 })
+                        {
+                            float sw = g.MeasureString(s, bubbleFont).Width;
+                            if (sw > maxW) maxW = sw;
+                        }
+                        int ew = (int)maxW + 16, eh = (int)(lh * 4) + 16;
+                        int ey = boxY - eh - 4;
+                        var er = new Rectangle(bubbleX, ey, ew, eh);
+                        g.FillRectangle(Brushes.White, er);
+                        g.DrawRectangle(Pens.Black, er);
+                        float dy = ey + 8;
+                        g.DrawString(l1, bubbleFontBold, Brushes.Black, bubbleX + 8, dy); dy += lh;
+                        g.DrawString(l2, bubbleFont, Brushes.Black, bubbleX + 8, dy); dy += lh;
+                        g.DrawString(l3, bubbleFont, Brushes.Black, bubbleX + 8, dy); dy += lh;
+                        g.DrawString(l4, bubbleFont, Brushes.Black, bubbleX + 8, dy);
+                    }
+                    bubbleFont.Dispose();
+                    bubbleFontBold.Dispose();
                 }
             }
         }
@@ -290,10 +370,13 @@ namespace LogonShell
             return -1;
         }
 
+        Rectangle PowerRect => new Rectangle(25, ClientSize.Height - 96 + 22, 130, 24);
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
             int idx = HitTestUser(e.X, e.Y);
+            Cursor = PowerRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
             if (idx == _hoverIndex) return;
             _hoverIndex = idx;
             long now = DateTime.UtcNow.Ticks;
@@ -312,6 +395,11 @@ namespace LogonShell
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
+            if (PowerRect.Contains(e.Location))
+            {
+                OpenPowerShortcut();
+                return;
+            }
             int idx = HitTestUser(e.X, e.Y);
             if (idx >= 0) SelectUser(idx);
             else DeselectUser();
@@ -339,6 +427,8 @@ namespace LogonShell
         void SelectUser(int idx)
         {
             _selectedIndex = idx;
+            _hintText = null;
+            _showError = false;
             var u = _users[idx];
             int sqX = CenterX + 36, sqY = UserTop + idx * 80 + 14;
             int boxX = sqX + 52 + 10, boxY = sqY + 43;
@@ -363,6 +453,8 @@ namespace LogonShell
         void DeselectUser()
         {
             _selectedIndex = -1;
+            _hintText = null;
+            _showError = false;
             _passwordBox.Visible = false;
             _goBtn.Visible = false;
             _chPic.Visible = false;
@@ -381,8 +473,11 @@ namespace LogonShell
             bool ok = LogonUser(u.Name, Environment.MachineName, pwd, 3, 0, ref token);
             if (!ok)
             {
+                _showError = true;
+                _hintText = null;
                 _passwordBox.Text = "";
                 _passwordBox.Focus();
+                Invalidate();
                 return;
             }
 
@@ -404,8 +499,38 @@ namespace LogonShell
             _closeWorker.RunWorkerAsync();
         }
 
+        void ShowPasswordHint()
+        {
+            if (_selectedIndex < 0) return;
+            _showError = false;
+            var u = _users[_selectedIndex];
+            try
+            {
+                var rid = u.SID.Split('-').Last();
+                var hex = int.Parse(rid).ToString("X").PadLeft(8, '0');
+                var view = Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32;
+                using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                using (var key = hive.OpenSubKey(@"SAM\SAM\Domains\Account\Users\" + hex))
+                {
+                    if (key != null)
+                    {
+                        byte[] data = (byte[])key.GetValue("UserPasswordHint");
+                        if (data != null)
+                        {
+                            string hint = System.Text.Encoding.Unicode.GetString(data).TrimEnd('\0');
+                            if (!string.IsNullOrEmpty(hint))
+                                _hintText = hint;
+                        }
+                    }
+                }
+            }
+            catch { }
+            Invalidate();
+        }
+
         string GetLastLoggedOnUser()
         {
+
             try
             {
                 string loc = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
@@ -420,6 +545,22 @@ namespace LogonShell
                 }
             }
             catch { return ""; }
+        }
+
+        void OpenPowerShortcut()
+        {
+            try
+            {
+                string conf = Environment.CurrentDirectory + "\\power.conf";
+                string target = null;
+                if (File.Exists(conf))
+                    target = File.ReadAllLines(conf).FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+                if (string.IsNullOrEmpty(target))
+                    target = Environment.CurrentDirectory + "\\shutdown.lnk";
+                if (File.Exists(target))
+                    Process.Start(target);
+            }
+            catch { }
         }
 
         protected override void OnResize(EventArgs e)
