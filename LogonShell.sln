@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogonShell", "LogonShell\Lo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logon Screen Launcher", "Logon Screen Launcher\Logon Screen Launcher.csproj", "{266C37E4-13FB-4849-8858-813D5F58B910}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogonShellCustomizer", "LogonShellCustomizer\LogonShellCustomizer.csproj", "{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		All|Any CPU = All|Any CPU
@@ -43,18 +41,6 @@ Global
 		{266C37E4-13FB-4849-8858-813D5F58B910}.Release|Any CPU.Build.0 = Release|Any CPU
 		{266C37E4-13FB-4849-8858-813D5F58B910}.Release|x64.ActiveCfg = Release|x64
 		{266C37E4-13FB-4849-8858-813D5F58B910}.Release|x64.Build.0 = Release|x64
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.All|Any CPU.ActiveCfg = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.All|Any CPU.Build.0 = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.All|x64.ActiveCfg = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.All|x64.Build.0 = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Debug|x64.Build.0 = Debug|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Release|x64.ActiveCfg = Release|x64
-		{F0A8C090-4B6B-4BFF-A95A-6EF13BCC1BDB}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
