@@ -105,6 +105,30 @@ namespace LogonShell
                 System.Threading.Thread.Sleep(250);
                 Environment.Exit(-1);
             }
+            if (Config.Args.Length > 0 && Config.Args[0] == "-startup" && AutologinEnabled())
+            {
+                int idx = _users.FindIndex(u => string.Compare(u.Name, _lastUser, StringComparison.OrdinalIgnoreCase) == 0);
+                if (idx >= 0) _selectedIndex = idx;
+                _loggedIn = true;
+                _passwordBox.Visible = false;
+                _goBtn.Visible = false;
+                _chPic.Visible = false;
+                _insPic.Visible = false;
+                RenderBgCache();
+                HideSystemCursor();
+                var autoWorker = new BackgroundWorker();
+                autoWorker.DoWork += (s, e) =>
+                {
+                    Process lp;
+                    do { lp = Process.GetProcessesByName("LogonUI").FirstOrDefault(); System.Threading.Thread.Sleep(100); }
+                    while (lp != null);
+                    RestoreSystemCursor();
+                    Application.Exit();
+                };
+                autoWorker.RunWorkerAsync();
+                Program.sw.Stop();
+                return;
+            }
             if (Config.Args.Length > 0 && Config.Args[0] == "-shutdown")
                 _isLoggingIn = true;
 
@@ -654,7 +678,29 @@ namespace LogonShell
             catch { return ""; }
         }
 
+        bool AutologinEnabled()
+        {
+            try
+            {
+                IntPtr phToken = IntPtr.Zero;
+                bool emptyPwd = LogonUser(_lastUser, Environment.MachineName, "", 3, 0, ref phToken);
+                bool autologon = false;
+                var view = Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32;
+                using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                {
+                    using (var key = hive.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"))
+                    {
+                        if (key?.GetValue("AutoAdminLogon") != null)
+                            autologon = key.GetValue("AutoAdminLogon").ToString().Contains("1");
+                    }
+                }
+                return emptyPwd || autologon;
+            }
+            catch { return false; }
+        }
+
         void OpenPowerShortcut()
+
         {
             try
             {
@@ -676,7 +722,7 @@ namespace LogonShell
             RenderBgCache();
             if (_closeButton != null)
                 _closeButton.Location = new Point(ClientSize.Width - 32, 0);
-            if (_selectedIndex >= 0) SelectUser(_selectedIndex);
+            if (_selectedIndex >= 0 && !_loggedIn) SelectUser(_selectedIndex);
             Invalidate();
         }
 
