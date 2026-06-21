@@ -10,8 +10,8 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Windows.Forms;
 
 namespace LogonShell
@@ -69,7 +69,7 @@ namespace LogonShell
 
         List<UserInfo> _users = new List<UserInfo>();
         int _selectedIndex = -1, _hoverIndex = -1;
-        bool _isLoggingIn, _showError, _loggedIn;
+        bool _isLoggingIn, _showError, _loggedIn, _autoLogin;
         string _lastUser, _hintText;
         Bitmap _bgCache;
 
@@ -107,9 +107,8 @@ namespace LogonShell
             }
             if (Config.Args.Length > 0 && Config.Args[0] == "-startup" && AutologinEnabled())
             {
-                int idx = _users.FindIndex(u => string.Compare(u.Name, _lastUser, StringComparison.OrdinalIgnoreCase) == 0);
-                if (idx >= 0) _selectedIndex = idx;
                 _loggedIn = true;
+                _autoLogin = true;
                 _passwordBox.Visible = false;
                 _goBtn.Visible = false;
                 _chPic.Visible = false;
@@ -162,13 +161,26 @@ namespace LogonShell
         {
             var exclude = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 { "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount" };
-            var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_UserAccount WHERE LocalAccount=True AND Disabled=False");
-            foreach (ManagementObject o in searcher.Get())
+            var view = Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32;
+            using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+            using (var profileList = hive.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"))
             {
-                string name = (string)o["Name"];
-                string sid = (string)o["SID"];
-                if (exclude.Contains(name) || name.EndsWith("$")) continue;
-                _users.Add(new UserInfo { Name = name, SID = sid, Avatar = LoadAvatar(sid) });
+                if (profileList == null) return;
+                foreach (string sidString in profileList.GetSubKeyNames())
+                {
+                    if (!sidString.StartsWith("S-1-5-21-")) continue;
+                    try
+                    {
+                        int rid = int.Parse(sidString.Split('-').Last());
+                        if (rid < 1000) continue;
+                        var sid = new SecurityIdentifier(sidString);
+                        string name = ((NTAccount)sid.Translate(typeof(NTAccount))).Value;
+                        if (name.Contains("\\")) name = name.Substring(name.LastIndexOf('\\') + 1);
+                        if (exclude.Contains(name) || name.EndsWith("$")) continue;
+                        _users.Add(new UserInfo { Name = name, SID = sidString, Avatar = LoadAvatar(sidString) });
+                    }
+                    catch { }
+                }
             }
             _users.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         }
@@ -281,7 +293,8 @@ namespace LogonShell
                 g.DrawImage(_imgUp, 0, 0, w, 80);
                 g.DrawImage(_imgBg, 0, 80, w, BgH);
                 g.DrawImage(_imgDown, 0, h - 96, w, 96);
-                g.DrawImage(_imgLine, CenterX, 80, 1, BgH);
+                if (!(_loggedIn && _autoLogin))
+                    g.DrawImage(_imgLine, CenterX, 80, 1, BgH);
                 if (!_loggedIn)
                 {
                     int lw = _imgLogo.Width, lh = _imgLogo.Height;
@@ -310,7 +323,20 @@ namespace LogonShell
             var g = e.Graphics;
             if (_bgCache != null) g.DrawImage(_bgCache, 0, 0);
 
-            if (_users.Count == 0) return;
+            if (_users.Count == 0 && !_autoLogin) return;
+
+            if (_loggedIn && _autoLogin)
+            {
+                var welcomeFont = new Font("\u5B8B\u4F53", 36f, FontStyle.Bold | FontStyle.Italic);
+                string welcomeText = "\u6B22\u8FCE\u4F7F\u7528";
+                var wsz = g.MeasureString(welcomeText, welcomeFont);
+                float wx = (ClientSize.Width - wsz.Width) / 2f;
+                float wy = 80 + (BgH - wsz.Height) / 2f;
+                g.DrawString(welcomeText, welcomeFont, new SolidBrush(Color.FromArgb(100, 0, 0, 0)), wx + 3, wy + 3);
+                g.DrawString(welcomeText, welcomeFont, Brushes.White, wx, wy);
+                welcomeFont.Dispose();
+                return;
+            }
 
             if (_loggedIn && _selectedIndex >= 0)
             {
