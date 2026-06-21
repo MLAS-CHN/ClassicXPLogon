@@ -27,6 +27,34 @@ namespace LogonShell
         static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
         static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        [DllImport("user32.dll")]
+        static extern int ShowCursor(bool bShow);
+        [DllImport("user32.dll")]
+        static extern IntPtr CreateCursor(IntPtr hInst, int xHot, int yHot, int nW, int nH, byte[] andPlane, byte[] xorPlane);
+        [DllImport("user32.dll")]
+        static extern bool SetSystemCursor(IntPtr hcur, uint id);
+        [DllImport("user32.dll")]
+        static extern IntPtr CopyIcon(IntPtr hIcon);
+        [DllImport("user32.dll")]
+        static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+        const uint SPI_SETCURSORS = 0x0057;
+
+        void HideSystemCursor()
+        {
+            uint[] ids = { 32512, 32513, 32514, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32649, 32650, 32651 };
+            byte[] andMask = { 0xFF };
+            byte[] xorMask = { 0x00 };
+            foreach (uint id in ids)
+            {
+                IntPtr blank = CreateCursor(IntPtr.Zero, 0, 0, 1, 1, andMask, xorMask);
+                SetSystemCursor(CopyIcon(blank), id);
+            }
+        }
+
+        void RestoreSystemCursor()
+        {
+            SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, 0);
+        }
         const int GWL_EXSTYLE = -20;
         const int WS_EX_LAYERED = 0x80000;
         const int WS_EX_TRANSPARENT = 0x20;
@@ -63,6 +91,7 @@ namespace LogonShell
         public LogOnForm()
         {
             InitializeComponent();
+            Bounds = Screen.PrimaryScreen.Bounds;
             BackColor = Color.FromArgb(58, 110, 165);
             LoadImages();
             EnumerateUsers();
@@ -497,6 +526,8 @@ namespace LogonShell
             Invalidate();
         }
 
+        void Log(string msg) { File.AppendAllText(Environment.CurrentDirectory + "\\login.log", DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + "\n"); }
+
         void DoLogin()
         {
             if (_selectedIndex < 0) return;
@@ -505,6 +536,7 @@ namespace LogonShell
 
             IntPtr token = IntPtr.Zero;
             bool ok = LogonUser(u.Name, Environment.MachineName, pwd, 3, 0, ref token);
+            Log("LogonUser(" + u.Name + ") = " + ok);
             if (!ok)
             {
                 _showError = true;
@@ -519,6 +551,7 @@ namespace LogonShell
             string cleanPwd = new string(pwd.Where(c => !char.IsControl(c)).ToArray());
             bool isLast = string.Compare(_lastUser, u.Name, CultureInfo.CurrentCulture,
                 CompareOptions.IgnoreCase | CompareOptions.IgnoreSymbols) == 0;
+            Log("isLast=" + isLast + " lastUser=" + _lastUser + " selected=" + u.Name);
 
             _loggedIn = true;
             _passwordBox.Visible = false;
@@ -527,16 +560,22 @@ namespace LogonShell
             _insPic.Visible = false;
             RenderBgCache();
             Refresh();
+            HideSystemCursor();
+            Log("Welcome screen rendered, cursor hidden, setting transparent");
             SetWindowLong(this.Handle, GWL_EXSTYLE, GetWindowLong(this.Handle, GWL_EXSTYLE) | WS_EX_LAYERED | WS_EX_TRANSPARENT);
             BackgroundForm.form.MakeTransparent();
+            Log("Transparent set, starting loginWorker");
 
             var loginWorker = new BackgroundWorker();
             var capturedHandle = this.Handle;
             loginWorker.DoWork += (s2, e2) =>
             {
+                Log("loginWorker: calling Logon.Login");
                 try { Logon.Login(u.Name, cleanPwd, isLast); }
                 catch (Exception ex)
                 {
+                    Log("loginWorker: Logon.Login FAILED: " + ex.Message);
+                    RestoreSystemCursor();
                     File.AppendAllText(Environment.CurrentDirectory + "\\login.log",
                         DateTime.Now + " Login failed: " + ex.Message + "\n");
                     this.Invoke((MethodInvoker)delegate
@@ -557,9 +596,11 @@ namespace LogonShell
                     });
                     return;
                 }
+                Log("loginWorker: Logon.Login returned OK, waiting for LogonUI exit");
                 Process lp;
                 do { lp = Process.GetProcessesByName("LogonUI").FirstOrDefault(); System.Threading.Thread.Sleep(100); }
                 while (lp != null);
+                RestoreSystemCursor();
                 Application.Exit();
             };
             loginWorker.RunWorkerAsync();

@@ -19,7 +19,7 @@
             this.ClientSize = new System.Drawing.Size(800, 600);
             this.ControlBox = false;
             this.DoubleBuffered = true;
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "LogOnForm";
