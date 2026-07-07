@@ -4,6 +4,7 @@ namespace LogonShell
 {
     public static class Config
     {
+        public const string Version = "0.1.0";
         public static string[] Args;
 
         public static void Initialize(string[] args)

@@ -1,4 +1,4 @@
-# ClassicLogon
+# ClassicXPLogon
 
 Classic XP-style custom logon shell for Windows 10/11. Replaces the modern Windows lock screen with a classic, lightweight login interface.
 
