@@ -69,7 +69,7 @@ namespace LogonShell
 
         List<UserInfo> _users = new List<UserInfo>();
         int _selectedIndex = -1, _hoverIndex = -1;
-        bool _isLoggingIn, _showError, _loggedIn, _autoLogin;
+        bool _showError, _loggedIn, _autoLogin;
         string _lastUser, _hintText;
         Bitmap _bgCache;
 
@@ -128,9 +128,6 @@ namespace LogonShell
                 Program.sw.Stop();
                 return;
             }
-            if (Config.Args.Length > 0 && Config.Args[0] == "-shutdown")
-                _isLoggingIn = true;
-
             Program.sw.Stop();
         }
 
@@ -187,8 +184,6 @@ namespace LogonShell
 
         Image LoadAvatar(string sid)
         {
-            var log = new System.Text.StringBuilder();
-            log.AppendLine("LoadAvatar: " + sid);
             try
             {
                 string regPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\AccountPicture\Users\" + sid;
@@ -196,34 +191,21 @@ namespace LogonShell
                 using (var hive = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
                 using (var key = hive.OpenSubKey(regPath))
                 {
-                    log.AppendLine("  key: " + (key != null ? "found" : "null"));
                     if (key != null)
                     {
                         foreach (string val in new[] { "Image240", "Image192", "Image96", "Image64", "Image48" })
                         {
                             string path = key.GetValue(val) as string;
-                            log.AppendLine("  " + val + " = " + (path ?? "null"));
-                            if (path != null)
+                            if (path != null && File.Exists(path))
                             {
-                                log.AppendLine("  exists: " + File.Exists(path));
-                                if (File.Exists(path))
-                                {
-                                    try
-                                    {
-                                        var img = Image.FromStream(new MemoryStream(File.ReadAllBytes(path)));
-                                        log.AppendLine("  OK: " + img.Width + "x" + img.Height);
-                                        File.AppendAllText(Environment.CurrentDirectory + "\\avatar.log", log.ToString());
-                                        return img;
-                                    }
-                                    catch (Exception ex) { log.AppendLine("  load error: " + ex.Message); }
-                                }
+                                try { return Image.FromStream(new MemoryStream(File.ReadAllBytes(path))); }
+                                catch { }
                             }
                         }
                     }
                 }
             }
-            catch (Exception ex) { log.AppendLine("  outer error: " + ex.Message); }
-            File.AppendAllText(Environment.CurrentDirectory + "\\avatar.log", log.ToString());
+            catch { }
             return _imgDefaultUser;
         }
 
@@ -597,7 +579,6 @@ namespace LogonShell
                 return;
             }
 
-            _isLoggingIn = true;
             string cleanPwd = new string(pwd.Where(c => !char.IsControl(c)).ToArray());
             bool isLast = string.Compare(_lastUser, u.Name, CultureInfo.CurrentCulture,
                 CompareOptions.IgnoreCase | CompareOptions.IgnoreSymbols) == 0;
