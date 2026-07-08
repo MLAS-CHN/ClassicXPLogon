@@ -32,7 +32,7 @@ taskkill /f /im LogonShell.exe >nul 2>&1
 
 :: Create install directory
 if not exist "%INSTALL_PATH%" mkdir "%INSTALL_PATH%"
-if not exist "%INSTALL_PATH%\resources" mkdir "%INSTALL_PATH%\resources"
+if not exist "%INSTALL_PATH%\assets" mkdir "%INSTALL_PATH%\assets"
 
 :: Copy files
 echo Copying files...
@@ -41,7 +41,7 @@ copy /y "%~dp0LauncherService.exe" "%INSTALL_PATH%\" >nul
 copy /y "%~dp0FlaUI.Core.dll" "%INSTALL_PATH%\" >nul
 copy /y "%~dp0FlaUI.UIA3.dll" "%INSTALL_PATH%\" >nul
 copy /y "%~dp0Interop.UIAutomationClient.dll" "%INSTALL_PATH%\" >nul
-copy /y "%~dp0resources\*.png" "%INSTALL_PATH%\resources\" >nul
+copy /y "%~dp0assets\*.png" "%INSTALL_PATH%\assets\" >nul
 copy /y "%~dp0uninstall.bat" "%INSTALL_PATH%\" >nul
 
 :: Create service

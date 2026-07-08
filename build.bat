@@ -23,12 +23,12 @@ if not exist "%REFPATH%\mscorlib.dll" (
     exit /b 1
 )
 
-echo === Classic Logon Shell Build ===
+echo === ClassicXPLogon Build ===
 echo MSBuild: %MSBUILD%
 echo.
 
 :: Build
-"%MSBUILD%" "%~dp0LogonShell.sln" /t:Rebuild /p:Configuration=Release "/p:Platform=Any CPU" "/p:FrameworkPathOverride=%REFPATH%" /verbosity:minimal
+"%MSBUILD%" "%~dp0ClassicXPLogon.sln" /t:Rebuild /p:Configuration=Release "/p:Platform=Any CPU" "/p:FrameworkPathOverride=%REFPATH%" /verbosity:minimal
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Build failed.
@@ -40,17 +40,17 @@ if %errorlevel% neq 0 (
 set OUT=%~dp0build
 if exist "%OUT%" rmdir /s /q "%OUT%"
 mkdir "%OUT%"
-mkdir "%OUT%\resources"
+mkdir "%OUT%\assets"
 
 :: Copy files
-copy /y "%~dp0LogonShell\bin\Release\LogonShell.exe" "%OUT%\" >nul
-copy /y "%~dp0LogonShell\bin\Release\FlaUI.Core.dll" "%OUT%\" >nul
-copy /y "%~dp0LogonShell\bin\Release\FlaUI.UIA3.dll" "%OUT%\" >nul
-copy /y "%~dp0LogonShell\bin\Release\Interop.UIAutomationClient.dll" "%OUT%\" >nul
-copy /y "%~dp0Logon Screen Launcher\bin\Release\LauncherService.exe" "%OUT%\" >nul
-copy /y "%~dp0resources\*.png" "%OUT%\resources\" >nul
-copy /y "%~dp0scripts\install.bat" "%OUT%\" >nul
-copy /y "%~dp0scripts\uninstall.bat" "%OUT%\" >nul
+copy /y "%~dp0src\App\bin\Release\LogonShell.exe" "%OUT%\" >nul
+copy /y "%~dp0src\App\bin\Release\FlaUI.Core.dll" "%OUT%\" >nul
+copy /y "%~dp0src\App\bin\Release\FlaUI.UIA3.dll" "%OUT%\" >nul
+copy /y "%~dp0src\App\bin\Release\Interop.UIAutomationClient.dll" "%OUT%\" >nul
+copy /y "%~dp0src\Service\bin\Release\LauncherService.exe" "%OUT%\" >nul
+copy /y "%~dp0assets\*.png" "%OUT%\assets\" >nul
+copy /y "%~dp0install\install.bat" "%OUT%\" >nul
+copy /y "%~dp0install\uninstall.bat" "%OUT%\" >nul
 
 echo.
 echo === Build complete ===
@@ -59,6 +59,6 @@ echo.
 echo Files:
 dir "%OUT%" /b
 echo.
-echo resources:
-dir "%OUT%\resources" /b
+echo assets:
+dir "%OUT%\assets" /b
 pause

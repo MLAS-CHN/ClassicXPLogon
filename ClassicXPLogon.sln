@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32611.2
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogonShell", "LogonShell\LogonShell.csproj", "{00CE4CAA-1F57-4339-9BE2-CD482C187667}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App", "src\App\LogonShell.csproj", "{00CE4CAA-1F57-4339-9BE2-CD482C187667}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logon Screen Launcher", "Logon Screen Launcher\Logon Screen Launcher.csproj", "{266C37E4-13FB-4849-8858-813D5F58B910}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Service\Logon Screen Launcher.csproj", "{266C37E4-13FB-4849-8858-813D5F58B910}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

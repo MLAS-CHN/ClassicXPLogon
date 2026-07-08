@@ -133,7 +133,7 @@ namespace LogonShell
 
         void LoadImages()
         {
-            string dir = Environment.CurrentDirectory + "\\resources\\";
+            string dir = Environment.CurrentDirectory + "\\assets\\";
             _imgUp = LoadImg(dir + "up.png");
             _imgDown = LoadImg(dir + "down.png");
             _imgBg = LoadImg(dir + "bg.png");
