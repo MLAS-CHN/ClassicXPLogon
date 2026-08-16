@@ -6,6 +6,9 @@
 # macOS
 .DS_Store
 
+# opencode session data
+.omo/
+
 # Build output
 build/
 !packages/**/build/

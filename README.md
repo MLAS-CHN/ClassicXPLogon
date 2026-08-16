@@ -76,7 +76,7 @@ The following accounts are excluded from the user list:
 
 ## Credits
 
-Based on [Classic Logon Shell](https://github.com/your-link-here) (Release 1.2).
+Based on [Classic Logon Shell](https://github.com/ClassicLogonShell) (Release 1.2). UI redesigned with an XP-style theme, dependencies simplified, and multi-language support planned for future releases.
 
 ## License
 
