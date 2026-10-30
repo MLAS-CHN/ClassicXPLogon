@@ -36,8 +36,14 @@ namespace LogonShell
         [DllImport("user32.dll")]
         static extern IntPtr CopyIcon(IntPtr hIcon);
         [DllImport("user32.dll")]
+        static extern IntPtr LoadImage(IntPtr hinst, IntPtr name, uint type, int cx, int cy, uint fuLoad);
+        [DllImport("kernel32.dll")]
+        static extern IntPtr LoadLibrary(string lpFileName);
+        [DllImport("user32.dll")]
         static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
         const uint SPI_SETCURSORS = 0x0057;
+        const uint IMAGE_CURSOR = 2;
+        const uint LR_DEFAULTSIZE = 0x40;
 
         void HideSystemCursor()
         {
@@ -53,7 +59,21 @@ namespace LogonShell
 
         void RestoreSystemCursor()
         {
-            SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, 0);
+            // 从 user32.dll 内置资源加载经典(XP样式)光标
+            IntPtr u = LoadLibrary("user32.dll");
+            if (u == IntPtr.Zero)
+            {
+                SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, 0);
+                return;
+            }
+            int[] res = { 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115 };
+            uint[] sys = { 32512, 32513, 32514, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32650, 32651, 32631, 32649, 32671 };
+            for (int i = 0; i < res.Length; i++)
+            {
+                IntPtr cur = LoadImage(u, (IntPtr)res[i], IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE);
+                if (cur != IntPtr.Zero)
+                    SetSystemCursor(cur, sys[i]);
+            }
         }
         const int GWL_EXSTYLE = -20;
         const int WS_EX_LAYERED = 0x80000;
@@ -121,7 +141,6 @@ namespace LogonShell
                     Process lp;
                     do { lp = Process.GetProcessesByName("LogonUI").FirstOrDefault(); System.Threading.Thread.Sleep(100); }
                     while (lp != null);
-                    RestoreSystemCursor();
                     Application.Exit();
                 };
                 autoWorker.RunWorkerAsync();
@@ -631,7 +650,6 @@ namespace LogonShell
                 Process lp;
                 do { lp = Process.GetProcessesByName("LogonUI").FirstOrDefault(); System.Threading.Thread.Sleep(100); }
                 while (lp != null);
-                RestoreSystemCursor();
                 Application.Exit();
             };
             loginWorker.RunWorkerAsync();
@@ -735,6 +753,7 @@ namespace LogonShell
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            RestoreSystemCursor();
             _animTimer?.Stop();
             Application.Exit();
         }
