@@ -41,12 +41,39 @@ namespace LogonShell
         static extern IntPtr LoadLibrary(string lpFileName);
         [DllImport("user32.dll")]
         static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+        [DllImport("user32.dll")]
+        static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref ANIMATIONINFO pvParam, uint fWinIni);
+        [StructLayout(LayoutKind.Sequential)]
+        struct ANIMATIONINFO { public uint cbSize; public int iMinAnimate; }
         const uint SPI_SETCURSORS = 0x0057;
+        const uint SPI_GETANIMATION = 0x0048;
+        const uint SPI_SETANIMATION = 0x0049;
         const uint IMAGE_CURSOR = 2;
         const uint LR_DEFAULTSIZE = 0x40;
+        ANIMATIONINFO _origAnim;
+        bool _animSaved;
+
+        void DisableAnimations()
+        {
+            var ai = new ANIMATIONINFO { cbSize = (uint)Marshal.SizeOf(typeof(ANIMATIONINFO)) };
+            if (SystemParametersInfo(SPI_GETANIMATION, ai.cbSize, ref ai, 0))
+            {
+                _origAnim = ai;
+                _animSaved = true;
+            }
+            ai.iMinAnimate = 0;
+            SystemParametersInfo(SPI_SETANIMATION, ai.cbSize, ref ai, 0);
+        }
+
+        void RestoreAnimations()
+        {
+            if (_animSaved)
+                SystemParametersInfo(SPI_SETANIMATION, _origAnim.cbSize, ref _origAnim, 0);
+        }
 
         void HideSystemCursor()
         {
+            DisableAnimations();
             uint[] ids = { 32512, 32513, 32514, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32649, 32650, 32651 };
             byte[] andMask = { 0xFF };
             byte[] xorMask = { 0x00 };
@@ -59,6 +86,7 @@ namespace LogonShell
 
         void RestoreSystemCursor()
         {
+            RestoreAnimations();
             // 从 user32.dll 内置资源加载经典(XP样式)光标
             IntPtr u = LoadLibrary("user32.dll");
             if (u == IntPtr.Zero)
